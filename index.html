@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coreスカウト — AIで1to1スカウトを自動生成</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=M+PLUS+1:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@300;400;500;700;900&family=Sora:wght@300;400;500;600;700&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --cyan: #0891B2; --cyan-light: #22D3EE; --cyan-50: #ECFEFF; --cyan-dark: #0E7490;
+  --teal: #0D9488; --bg: #FAFBFF; --white: #FFFFFF;
+  --text: #1A1D2E; --text-sub: #5C6178; --text-muted: #8E93A8; --dark-bg: #0F1B2D;
+  --navy: #0F172A; --navy-light: #1E293B;
+  --gold: #B8960C; --gold-light: #D4AF37;
+  --font-en: 'Space Grotesk', 'Sora', sans-serif;
+  --font-num: 'DM Sans', sans-serif;
+  --font-ja: 'Noto Sans JP', sans-serif;
+  --font-ja-head: 'M PLUS 1', sans-serif;
+}
+html { font-size: 16px; scroll-behavior: smooth; }
+body { background: var(--bg); color: var(--text); font-family: var(--font-ja); line-height: 1.8; overflow-x: hidden; }
+
+/* ==================================================================
+   ヒーローセクション (v6ベース)
+   ================================================================== */
+section.hero {
+  min-height: 600px;
+  display: flex; flex-direction: column;
+  position: relative; overflow: hidden;
+  background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 60%, #F1F5F9 100%);
+}
+section.hero .orb { position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.18; pointer-events: none; }
+section.hero .orb-1 { width: 400px; height: 400px; background: var(--cyan); top: -120px; right: 15%; }
+section.hero .orb-2 { width: 280px; height: 280px; background: var(--teal); bottom: 15%; left: -50px; opacity: 0.1; }
+
+/* レイアウト: 縦にawards → columns(左右横並び) */
+.hero-inner {
+  position: relative; z-index: 1;
+  max-width: 1280px; width: 100%; margin: 0 auto;
+  padding: 44px 40px 44px 56px; flex: 1;
+  display: flex; flex-direction: column;
+}
+
+/* ロゴ〜CTA と Chrome を横並び、高さ揃え */
+.hero-columns {
+  display: flex; gap: 32px; align-items: stretch;
+}
+.hero-left {
+  flex: 1; min-width: 0;
+  height: 400px; display: flex; flex-direction: column; justify-content: space-between;
+}
+.hero-right {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column;
+}
+
+/* 訴求バッジ — 月桂冠バナースタイル */
+.awards {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 28px;
+}
+.award {
+  display: flex; align-items: center; gap: 0;
+}
+.award-laurel-l, .award-laurel-r {
+  width: 36px; height: 60px; flex-shrink: 0;
+}
+.award-body {
+  display: flex; align-items: baseline; gap: 4px;
+  white-space: nowrap;
+  padding: 0 2px;
+}
+.award-body .label {
+  font-size: 0.8rem; font-weight: 700; color: var(--navy);
+  line-height: 1;
+}
+.award-body .num {
+  font-family: var(--font-num); font-size: 2rem; font-weight: 700;
+  color: var(--cyan); line-height: 1; letter-spacing: -0.02em;
+}
+.award-body .unit {
+  font-family: var(--font-num); font-size: 0.9rem; font-weight: 600;
+  color: var(--cyan);
+}
+.award-divider {
+  width: 1px; height: 36px;
+  background: linear-gradient(180deg, transparent, rgba(0,0,0,0.12), transparent);
+  margin: 0 2px;
+  flex-shrink: 0;
+}
+
+/* ロゴ */
+.hero-logo { display: flex; align-items: baseline; margin-bottom: 20px; }
+.hero-logo .en { font-family: var(--font-en); font-weight: 700; font-size: 48px; line-height: 1; letter-spacing: -0.02em; }
+.hero-logo .c { color: var(--cyan); }
+.hero-logo .rest { color: var(--text); }
+.hero-logo .ja { font-family: var(--font-ja-head); font-weight: 800; font-size: 38px; color: var(--text); margin-left: 4px; }
+
+/* h1 */
+section.hero h1 { font-size: 1.85rem; font-weight: 900; color: var(--text); line-height: 1.55; margin-bottom: 14px; }
+section.hero h1 .hl { color: var(--cyan); position: relative; display: inline; }
+section.hero h1 .hl::after { content: ''; position: absolute; bottom: 2px; left: 0; width: 100%; height: 10px; background: var(--cyan); opacity: 0.1; border-radius: 2px; z-index: -1; }
+.hero-sub { font-size: 0.95rem; color: var(--text-sub); line-height: 1.8; margin-bottom: 20px; font-weight: 500; }
+.hero-ctas { display: flex; gap: 14px; }
+.hero-cta1 {
+  padding: 15px 36px; background: var(--cyan); color: #fff;
+  border-radius: 12px; font-size: 0.95rem; font-weight: 700;
+  text-decoration: none; display: inline-flex; align-items: center; gap: 10px;
+  transition: all .3s ease; box-shadow: 0 4px 20px rgba(8,145,178,0.25);
+}
+.hero-cta1:hover { background: var(--cyan-dark); transform: translateY(-2px); box-shadow: 0 8px 28px rgba(8,145,178,0.35); }
+.hero-cta2 {
+  padding: 15px 24px; color: var(--cyan); font-size: 0.9rem;
+  font-weight: 600; text-decoration: none; border-radius: 12px;
+  background: rgba(8,145,178,0.04); transition: all .3s ease;
+}
+.hero-cta2:hover { background: rgba(8,145,178,0.08); }
+
+/* Chrome窓 (v6スタイル) */
+.chrome-w {
+  width: 100%; height: 400px;
+  border-radius: 12px; overflow: hidden;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.04);
+  display: flex; flex-direction: column;
+}
+.chrome-w-bar { display: flex; align-items: center; gap: 5px; padding: 10px 14px; background: #E8E8EC; flex-shrink: 0; }
+.chrome-w-tab { display: flex; background: #DEE0E4; padding: 0 14px; flex-shrink: 0; }
+.chrome-w-tab-item { display: flex; align-items: center; gap: 6px; background: #F5F5F7; padding: 7px 16px; border-radius: 8px 8px 0 0; font-family: var(--font-en); font-size: .52rem; color: #555; font-weight: 500; margin-top: 4px; }
+.chrome-w-tab-icon { width: 12px; height: 12px; border-radius: 3px; background: var(--cyan); display: flex; align-items: center; justify-content: center; font-family: var(--font-en); font-size: 7px; font-weight: 700; color: #fff; }
+.chrome-w-url { display: flex; align-items: center; padding: 6px 14px 8px; background: #F5F5F7; flex-shrink: 0; }
+.chrome-w-url-input { flex: 1; background: #fff; border: 1px solid #E0E0E4; border-radius: 16px; padding: 5px 14px; font-family: var(--font-en); font-size: .52rem; color: #aaa; text-align: center; }
+.chrome-w-content { background: #fff; padding: 12px 16px; flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 4px; overflow: hidden; }
+.browser-dot { width: 10px; height: 10px; border-radius: 50%; }
+.browser-dot.r { background: #ff5f57; } .browser-dot.y { background: #ffbd2e; } .browser-dot.g { background: #28c840; }
+
+/* BA (Before/After) */
+.ba { border-radius: 10px; padding: 10px 14px; margin-bottom: 0; flex: 1; min-height: 0; overflow: hidden; }
+.ba.before { background: #F5F5F7; border: 1px solid #E0E0E4; }
+.ba.after { background: linear-gradient(135deg, rgba(8,145,178,0.06), rgba(34,211,238,0.03)); border: 2px solid rgba(8,145,178,0.3); box-shadow: 0 4px 16px rgba(8,145,178,0.08); }
+.ba-label { font-family: var(--font-en); font-size: 9px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+.ba-label .dot { width: 6px; height: 6px; border-radius: 50%; }
+.ba.before .ba-label { color: #999; } .ba.before .ba-label .dot { background: #ccc; }
+.ba.after .ba-label { color: var(--cyan); } .ba.after .ba-label .dot { background: var(--cyan); }
+.ba-subject { font-weight: 700; margin-bottom: 6px; line-height: 1.4; }
+.ba.before .ba-subject { font-size: 11px; color: #666; }
+.ba.after .ba-subject { font-size: 11px; color: var(--text); }
+.ba-body { line-height: 1.65; }
+.ba.before .ba-body { font-size: 10px; color: #888; }
+.ba.after .ba-body { font-size: 10px; color: var(--text-sub); }
+.ba.after .ba-body .hl { background: linear-gradient(180deg, transparent 60%, rgba(8,145,178,0.15) 60%); color: var(--text); font-weight: 700; padding: 0 2px; }
+.ba-arrow { display: flex; align-items: center; justify-content: center; padding: 2px 0; flex-shrink: 0; }
+.ba-arrow span { display: inline-flex; width: 24px; height: 24px; border-radius: 50%; background: var(--cyan); align-items: center; justify-content: center; box-shadow: 0 2px 10px rgba(8,145,178,0.3); }
+.ba-arrow svg { width: 12px; height: 12px; stroke: #fff; fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+.ba-after-badge { display: inline-flex; align-items: center; gap: 4px; margin-top: 6px; padding: 3px 10px; background: rgba(8,145,178,0.08); border-radius: 20px; font-size: 9px; font-weight: 700; color: var(--cyan); }
+.ba-after-badge svg { width: 10px; height: 10px; stroke: var(--cyan); fill: none; stroke-width: 2.5; }
+
+/* ==================================================================
+   セクションCSS (v4からの引き継ぎ: PROBLEMS〜FOOTER)
+   ================================================================== */
+
+/* ===== PROBLEMS — Cyan ===== */
+.pain-section { background: linear-gradient(135deg,#0891B2 0%,#0E7490 100%); position: relative; overflow: hidden; }
+.pain-section::before { content:''; position: absolute; width: 500px; height: 500px; background: rgba(255,255,255,0.06); border-radius: 50%; top: -200px; right: -100px; pointer-events: none; }
+.pain-inner { max-width: 1040px; margin: 0 auto; padding: 80px 48px 72px; position: relative; z-index: 1; }
+.pain-header { text-align: center; margin-bottom: 56px; }
+.pain-label { font-family: var(--font-en); font-size: .7rem; font-weight: 600; letter-spacing: .3em; color: rgba(255,255,255,0.7); text-transform: uppercase; margin-bottom: 14px; }
+.pain-title { font-size: clamp(1.4rem,3.2vw,1.9rem); font-weight: 900; color: #fff; line-height: 1.5; margin-bottom: 12px; }
+.pain-subtitle { font-size: .88rem; color: rgba(255,255,255,0.8); line-height: 1.8; }
+.pain-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 20px; }
+.pain-card {
+  background: rgba(255,255,255,0.95); backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.85); border-radius: 14px; padding: 32px 28px 28px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.05); transition: transform .3s ease, box-shadow .3s ease;
+}
+.pain-card:hover { transform: translateY(-4px); box-shadow: 0 16px 48px rgba(0,0,0,0.12); }
+.pain-num { font-family: var(--font-en); font-size: .65rem; font-weight: 700; letter-spacing: .12em; color: rgba(8,84,108,0.6); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+.pain-num::after { content:''; flex: 1; height: 1px; background: rgba(0,0,0,0.08); }
+.pain-card-title { font-size: 1.05rem; font-weight: 800; color: #0C4A5E; line-height: 1.5; margin-bottom: 14px; }
+.pain-card-desc { font-size: .84rem; color: #1A5568; line-height: 1.8; }
+.pain-card-desc .em { color: #0C3547; font-weight: 700; }
+
+/* ===== PAIN STORY (integrated) ===== */
+.pain-story { margin-top: 56px; padding-top: 48px; max-width: 640px; margin-left: auto; margin-right: auto; text-align: center; position: relative; }
+.pain-story-divider { width: 48px; height: 3px; background: rgba(255,255,255,0.3); border-radius: 2px; margin: 0 auto 32px; }
+.pain-story-title { font-size: 1.2rem; font-weight: 900; color: #fff; line-height: 1.55; margin-bottom: 20px; }
+.pain-story-title .sp-only { display: none; }
+.pain-story-text { font-size: .88rem; color: rgba(255,255,255,0.85); line-height: 1.9; margin-bottom: 12px; }
+.pain-story-text strong { color: #fff; font-weight: 800; }
+.pain-story-result { display: flex; align-items: center; justify-content: center; gap: 16px; margin: 24px 0; padding: 20px 0; }
+.pain-story-before { font-family: var(--font-en); font-size: 2rem; font-weight: 700; color: rgba(255,255,255,0.5); letter-spacing: -0.02em; }
+.pain-story-after { font-family: var(--font-en); font-size: 3rem; font-weight: 700; color: #FACC15; letter-spacing: -0.03em; text-shadow: 0 2px 16px rgba(250,204,21,0.3); }
+@media (max-width: 960px) {
+  .pain-story { padding-top: 36px; margin-top: 40px; }
+  .pain-story-title .sp-only { display: inline; }
+  .pain-story-after { font-size: 2.4rem; }
+  .pain-story-before { font-size: 1.6rem; }
+}
+
+/* ===== SECTION COMMON ===== */
+.section-label { font-family: var(--font-en); font-size: .7rem; font-weight: 600; letter-spacing: .3em; color: var(--cyan); text-transform: uppercase; margin-bottom: 14px; text-align: center; }
+.section-title { font-size: clamp(1.4rem,3.2vw,1.9rem); font-weight: 900; color: var(--text); line-height: 1.5; margin-bottom: 16px; text-align: center; }
+.section-subtitle { font-size: .88rem; color: var(--text-sub); line-height: 1.8; text-align: center; max-width: 640px; margin: 0 auto; }
+
+/* ===== SOLUTION ===== */
+.solution-section { background: var(--bg); }
+.solution-inner { max-width: 1040px; margin: 0 auto; padding: 88px 48px 80px; }
+.solution-header { margin-bottom: 20px; }
+.solution-logo { font-family: var(--font-en); font-weight: 700; letter-spacing: -0.02em; }
+.solution-logo-c { color: var(--cyan); }
+.solution-logo-ja { font-family: var(--font-ja-head); font-weight: 800; margin-left: 2px; }
+.solution-bridge { text-align: center; padding: 20px 24px 40px; }
+.solution-bridge-label { font-size: .92rem; font-weight: 700; color: var(--cyan); margin-bottom: 10px; }
+.solution-bridge p { font-size: .92rem; font-weight: 500; color: var(--text-sub); line-height: 1.85; }
+.solution-bridge .em-core { color: var(--cyan); font-weight: 700; }
+.solution-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 24px; }
+.solution-card { background: var(--white); border: 1px solid rgba(0,0,0,0.06); border-radius: 16px; padding: 36px 28px 32px; position: relative; transition: transform .3s ease, box-shadow .3s ease; display: flex; flex-direction: column; }
+.solution-card:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(8,145,178,0.08); }
+.solution-card::before { content:''; position: absolute; top: 0; left: 24px; right: 24px; height: 3px; background: var(--cyan); border-radius: 0 0 2px 2px; opacity: 0; transition: opacity .3s ease; }
+.solution-card:hover::before { opacity: 1; }
+.solution-num { font-family: var(--font-en); font-size: .62rem; font-weight: 700; letter-spacing: .12em; color: var(--cyan); opacity: .6; margin-bottom: 16px; }
+.solution-card-title { font-size: 1.05rem; font-weight: 800; color: var(--text); line-height: 1.5; margin-bottom: 16px; min-height: 3.2em; display: flex; align-items: flex-start; }
+.solution-card-desc { font-size: .84rem; color: var(--text-sub); line-height: 1.85; }
+.solution-card-desc .em { color: var(--text); font-weight: 700; }
+
+/* ===== REASON — Zigzag ===== */
+.reason-section { background: var(--white); border-top: 1px solid rgba(0,0,0,0.04); }
+.reason-inner { max-width: 1100px; margin: 0 auto; padding: 88px 48px 80px; }
+.reason-header { margin-bottom: 64px; }
+.reason-row { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center; margin-bottom: 64px; }
+.reason-row:last-child { margin-bottom: 0; }
+.reason-row.reverse .reason-visual { order: 2; }
+.reason-row.reverse .reason-text { order: 1; }
+.reason-visual { border-radius: 16px; overflow: hidden; aspect-ratio: 4/3; display: flex; align-items: center; justify-content: center; }
+.reason-visual svg { width: 100%; height: 100%; }
+.reason-text-label { font-family: var(--font-en); font-size: .72rem; font-weight: 700; letter-spacing: .1em; color: var(--cyan); margin-bottom: 8px; display: flex; align-items: baseline; gap: 8px; }
+.reason-text-label .num { font-size: 1.8rem; font-weight: 700; line-height: 1; }
+.reason-text-title { font-size: 1.3rem; font-weight: 900; color: var(--text); line-height: 1.5; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px dashed rgba(0,0,0,0.08); }
+.reason-text-desc { font-size: .88rem; color: var(--text-sub); line-height: 1.85; }
+.reason-text-desc .em-r { color: var(--cyan); font-weight: 700; }
+
+/* ===== OPERATION ===== */
+.op-section { background: #F4F7FB; }
+.op-inner { max-width: 1100px; margin: 0 auto; padding: 88px 48px 80px; }
+.op-header { margin-bottom: 56px; }
+.op-example { background: var(--white); border: 1px solid rgba(0,0,0,0.06); border-radius: 20px; overflow: hidden; margin-bottom: 28px; box-shadow: 0 4px 20px rgba(0,0,0,0.04); }
+.op-example-label { padding: 14px 28px; background: var(--bg); border-bottom: 1px solid rgba(0,0,0,0.04); display: flex; align-items: center; gap: 10px; }
+.op-example-badge { font-family: var(--font-en); font-size: .65rem; font-weight: 700; letter-spacing: .1em; color: var(--cyan); }
+.op-example-who { font-size: .78rem; color: var(--text-sub); font-weight: 500; }
+.op-example-body { display: grid; grid-template-columns: 280px 48px 1fr; align-items: stretch; }
+.op-profile { padding: 28px 24px; border-right: 1px solid rgba(0,0,0,0.04); background: #FAFBFF; }
+.op-profile-title { font-size: .72rem; font-weight: 700; color: var(--cyan); letter-spacing: .08em; margin-bottom: 14px; font-family: var(--font-en); }
+.op-profile-row { display: flex; gap: 6px; margin-bottom: 8px; font-size: .78rem; color: var(--text-sub); line-height: 1.5; }
+.op-profile-label { font-weight: 700; color: var(--text-muted); min-width: 52px; flex-shrink: 0; font-size: .7rem; }
+.op-profile-val { font-weight: 500; }
+.op-profile-highlight { margin-top: 12px; padding: 10px 12px; background: rgba(8,145,178,0.04); border-radius: 8px; font-size: .75rem; color: var(--text); font-weight: 600; line-height: 1.6; }
+.op-arrow { display: flex; align-items: center; justify-content: center; background: var(--bg); }
+.op-arrow-inner { width: 36px; height: 36px; border-radius: 50%; background: var(--cyan); display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(8,145,178,0.25); }
+.op-arrow svg { width: 16px; height: 16px; stroke: #fff; fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+.op-generated { padding: 28px; }
+.op-gen-title { font-size: .72rem; font-weight: 700; color: var(--cyan); letter-spacing: .08em; margin-bottom: 14px; font-family: var(--font-en); }
+.op-gen-subject-label { font-size: .68rem; color: var(--cyan); font-weight: 700; margin-bottom: 4px; }
+.op-gen-subject { font-size: .88rem; font-weight: 800; color: var(--text); line-height: 1.5; margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid rgba(0,0,0,0.04); }
+.op-gen-body-label { font-size: .68rem; color: var(--cyan); font-weight: 700; margin-bottom: 6px; }
+.op-gen-body { font-size: .8rem; color: var(--text-sub); line-height: 1.85; }
+.op-gen-body .hl-gen { background: rgba(8,145,178,0.08); color: var(--text); font-weight: 600; padding: 1px 4px; border-radius: 3px; }
+.op-note { text-align: center; font-size: .78rem; color: var(--text-muted); margin-top: 12px; }
+.op-note strong { color: var(--text-sub); font-weight: 600; }
+
+/* ===== MODEL EXAMPLE ===== */
+.model-section { background: var(--white); border-top: 1px solid rgba(0,0,0,0.04); }
+.model-inner { max-width: 960px; margin: 0 auto; padding: 88px 48px 80px; position: relative; }
+.model-header { margin-bottom: 48px; }
+.model-card { background: var(--bg); border: 1px solid rgba(0,0,0,0.06); border-radius: 20px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.04); max-height: 680px; position: relative; }
+.model-card-header { padding: 20px 32px; background: linear-gradient(135deg,#0891B2 0%,#0E7490 100%); display: flex; align-items: center; gap: 12px; }
+.model-card-badge { font-family: var(--font-en); font-size: .65rem; font-weight: 700; letter-spacing: .1em; color: rgba(255,255,255,0.7); text-transform: uppercase; }
+.model-card-title { font-size: .95rem; font-weight: 700; color: #fff; }
+.model-body { padding: 0; }
+.model-row { display: grid; grid-template-columns: 160px 1fr; border-bottom: 1px solid rgba(0,0,0,0.04); }
+.model-row:last-child { border-bottom: none; }
+.model-side { padding: 28px 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; background: rgba(0,0,0,0.01); border-right: 1px solid rgba(0,0,0,0.04); }
+.model-side-icon { font-size: 1.6rem; margin-bottom: 8px; }
+.model-side-num { font-family: var(--font-en); font-size: .6rem; font-weight: 700; color: var(--text-muted); letter-spacing: .1em; margin-bottom: 4px; }
+.model-side-title { font-size: .82rem; font-weight: 800; color: var(--text); line-height: 1.4; }
+.model-side-desc { font-size: .68rem; color: var(--text-muted); line-height: 1.4; margin-top: 4px; }
+.model-side-auto { font-size: .58rem; font-weight: 600; color: var(--cyan); background: rgba(8,145,178,0.06); padding: 2px 10px; border-radius: 12px; margin-top: 8px; }
+.model-block { padding: 28px 32px; }
+.model-block-label { display: none; }
+.model-reason-text { font-size: .84rem; color: var(--text-sub); line-height: 1.85; }
+.model-reason-text .hl-m { background: rgba(8,145,178,0.06); color: var(--text); font-weight: 600; padding: 1px 4px; border-radius: 3px; }
+.model-career-list { margin: 16px 0 0; padding: 0; list-style: none; }
+.model-career-list li { font-size: .82rem; color: var(--text-sub); line-height: 1.7; padding: 6px 0 6px 16px; position: relative; }
+.model-career-list li::before { content:'・'; position: absolute; left: 0; color: var(--cyan); font-weight: 700; }
+.model-career-list li .em-m { color: var(--text); font-weight: 700; }
+.model-job-grid { display: flex; flex-direction: column; gap: 12px; }
+.model-job-card { background: var(--white); border: 1px solid rgba(0,0,0,0.06); border-radius: 12px; padding: 18px 20px; display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; }
+.model-job-company { font-size: .82rem; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+.model-job-pos { font-size: .75rem; color: var(--text-sub); margin-bottom: 6px; }
+.model-job-desc { font-size: .75rem; color: var(--text-muted); line-height: 1.6; }
+.model-job-salary { font-family: var(--font-en); font-size: .82rem; font-weight: 700; color: var(--cyan); white-space: nowrap; text-align: right; }
+.model-job-salary .yen { font-size: .68rem; color: var(--text-muted); font-weight: 500; }
+.model-point-block { margin-bottom: 20px; }
+.model-point-block:last-child { margin-bottom: 0; }
+.model-point-title { font-size: .85rem; font-weight: 800; color: var(--text); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+.model-point-title .point-badge { font-size: .68rem; font-weight: 700; color: var(--white); background: var(--cyan); padding: 2px 8px; border-radius: 4px; }
+.model-point-risk { font-size: .8rem; color: var(--text-muted); line-height: 1.7; margin-bottom: 6px; padding-left: 12px; border-left: 2px solid rgba(0,0,0,0.06); }
+.model-point-solve { font-size: .8rem; color: var(--text-sub); line-height: 1.7; padding-left: 12px; border-left: 2px solid var(--cyan); }
+.model-point-solve .em-m { color: var(--cyan); font-weight: 700; }
+.model-fade-overlay { position: relative; margin-top: -200px; z-index: 2; pointer-events: none; height: 200px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; }
+.model-fade-gradient { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(255,255,255,0.5) 20%, rgba(255,255,255,0.85) 50%, rgba(255,255,255,0.98) 80%, rgba(255,255,255,1) 100%); }
+.model-fade-cta { pointer-events: auto; position: relative; z-index: 3; padding-bottom: 16px; }
+.model-fade-btn { display: inline-flex; align-items: center; gap: 8px; padding: 14px 36px; background: var(--cyan); color: #fff; border-radius: 10px; font-size: .9rem; font-weight: 600; text-decoration: none; transition: all .3s ease; box-shadow: 0 4px 20px rgba(8,145,178,0.25); }
+.model-fade-btn:hover { background: #0E7490; transform: translateY(-2px); box-shadow: 0 8px 28px rgba(8,145,178,0.35); }
+.model-fade-btn .arrow-sm { font-size: .85rem; }
+@media (max-width: 960px) {
+  .model-inner { padding: 56px 24px 48px; }
+  .model-row { grid-template-columns: 1fr; }
+  .model-side { flex-direction: row; gap: 12px; padding: 16px 20px; border-right: none; border-bottom: 1px solid rgba(0,0,0,0.04); }
+  .model-side-icon { margin-bottom: 0; }
+  .model-block { padding: 20px 20px; }
+  .model-job-card { grid-template-columns: 1fr; }
+}
+
+/* ===== RESULTS — Cyan/Teal ===== */
+.results-section { background: linear-gradient(135deg,#0891B2 0%,#0D9488 100%); position: relative; overflow: hidden; }
+.results-section::before { content:''; position: absolute; width: 600px; height: 600px; background: rgba(255,255,255,0.05); border-radius: 50%; bottom: -200px; left: -100px; pointer-events: none; }
+.results-inner { max-width: 1040px; margin: 0 auto; padding: 88px 48px 80px; position: relative; z-index: 1; }
+.results-header { margin-bottom: 56px; }
+.results-stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 20px; }
+.results-stat-card { background: rgba(255,255,255,0.12); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.18); border-radius: 14px; padding: 32px 24px; text-align: center; }
+.results-stat-num { font-family: var(--font-en); font-weight: 700; font-size: 2.6rem; color: #fff; line-height: 1.1; margin-bottom: 8px; letter-spacing: -0.02em; }
+.results-stat-num .unit { font-size: 1rem; color: rgba(255,255,255,0.7); margin-left: 2px; }
+.results-stat-label { font-size: .78rem; color: rgba(255,255,255,0.85); font-weight: 500; }
+.results-stat-note { font-size: .68rem; color: rgba(255,255,255,0.55); margin-top: 6px; }
+
+/* ===== VOICE — SNS style ===== */
+.voice-section { background: var(--white); }
+.voice-inner { max-width: 1080px; margin: 0 auto; padding: 88px 48px 80px; }
+.voice-header { margin-bottom: 48px; text-align: center; }
+.voice-header .section-label { color: var(--teal); }
+.voice-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 24px; }
+.sns-card { background: var(--bg); border-radius: 18px; overflow: hidden; border: 1px solid rgba(0,0,0,0.04); transition: transform .3s ease, box-shadow .3s ease; }
+.sns-card:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(0,0,0,0.06); }
+.sns-header { display: flex; align-items: center; gap: 14px; padding: 20px 24px; border-bottom: 1px solid rgba(0,0,0,0.04); }
+.sns-avatar { width: 52px; height: 52px; border-radius: 50%; overflow: hidden; flex-shrink: 0; }
+.sns-avatar svg { width: 100%; height: 100%; }
+.sns-user-info { flex: 1; }
+.sns-user-name { font-size: .88rem; font-weight: 700; color: var(--text); line-height: 1.3; }
+.sns-user-detail { font-size: .74rem; color: var(--text-muted); line-height: 1.4; margin-top: 2px; }
+.sns-body { padding: 20px 24px; }
+.sns-bubble { background: var(--white); border-radius: 2px 16px 16px 16px; padding: 18px 20px; font-size: .84rem; color: var(--text-sub); line-height: 1.85; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+.sns-footer { padding: 12px 24px 20px; display: flex; align-items: center; gap: 6px; }
+.sns-result-badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 14px; background: rgba(8,145,178,0.06); border-radius: 20px; font-size: .72rem; font-weight: 600; color: var(--cyan); }
+
+/* ===== MID CTA ===== */
+.mid-cta-section { background: linear-gradient(135deg,#0891B2 0%,#0E7490 40%,#0D9488 100%); padding: 72px 48px; text-align: center; }
+.mid-cta-inner { max-width: 700px; margin: 0 auto; }
+.mid-cta-line1 { font-size: 1.15rem; font-weight: 600; color: rgba(255,255,255,0.85); margin-bottom: 12px; }
+.mid-cta-line1 .hl-y { color: #FACC15; font-weight: 800; font-size: 1.3rem; border-bottom: 2px solid rgba(250,204,21,0.4); padding-bottom: 2px; }
+.mid-cta-line2 { font-size: 1.6rem; font-weight: 800; color: #fff; margin-bottom: 36px; }
+.mid-cta-line2 .hl-w { font-weight: 800; }
+.mid-cta-btn { display: inline-flex; align-items: center; gap: 16px; background: #FACC15; color: #0C4A5E; font-size: 1.1rem; font-weight: 700; padding: 18px 48px; border-radius: 60px; text-decoration: none; border: none; cursor: pointer; transition: all .3s ease; box-shadow: 0 4px 20px rgba(250,204,21,0.3); }
+.mid-cta-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(250,204,21,0.4); }
+.mid-cta-btn .arrow { width: 32px; height: 32px; border-radius: 50%; background: rgba(12,74,94,0.15); display: flex; align-items: center; justify-content: center; font-size: .9rem; }
+
+/* ===== SIMULATION ===== */
+.sim-section { background: var(--bg); }
+.sim-inner { max-width: 1100px; margin: 0 auto; padding: 88px 48px 80px; }
+.sim-header { margin-bottom: 48px; }
+.sim-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; padding: 2px; }
+.sim-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: .82rem; background: var(--white); border-radius: 16px; overflow: visible; box-shadow: 0 4px 20px rgba(0,0,0,0.04); }
+.sim-table thead th { padding: 16px 14px; font-weight: 700; font-size: .75rem; letter-spacing: .04em; border-bottom: 2px solid rgba(0,0,0,0.06); }
+.sim-table thead th:first-child { text-align: left; color: var(--text-muted); background: var(--bg); }
+.sim-table thead th:not(:first-child) { text-align: center; }
+.sim-table thead th.sim-core { color: #fff; background: var(--cyan); font-size: .85rem; border-left: 2px solid var(--cyan); border-right: 2px solid var(--cyan); border-top-left-radius: 12px; border-top-right-radius: 12px; }
+.sim-table tbody td { padding: 14px 14px; text-align: center; border-bottom: 1px solid rgba(0,0,0,0.04); color: var(--text-sub); }
+.sim-table tbody td:first-child { text-align: left; font-weight: 600; color: var(--text); background: rgba(0,0,0,0.01); }
+.sim-table tbody td.sim-core { background: rgba(8,145,178,0.04); font-weight: 700; color: var(--cyan); font-size: .92rem; border-left: 2px solid var(--cyan); border-right: 2px solid var(--cyan); }
+.sim-table tbody tr:last-child td { border-bottom: none; font-weight: 700; font-size: .88rem; padding: 18px 14px; background: rgba(0,0,0,0.01); }
+.sim-table tbody tr:last-child td.sim-core { background: rgba(8,145,178,0.08); color: var(--cyan); font-size: 1.15rem; border-left: 2px solid var(--cyan); border-right: 2px solid var(--cyan); border-bottom: 2px solid var(--cyan); border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; }
+.sim-note { font-size: .75rem; color: var(--text-muted); margin-top: 16px; text-align: center; }
+@media (max-width: 960px) {
+  .mid-cta-section { padding: 56px 24px; }
+  .mid-cta-line2 { font-size: 1.25rem; }
+  .sim-inner { padding: 56px 24px 48px; }
+  .sim-table { font-size: .75rem; }
+}
+
+/* ===== FAQ ===== */
+.faq-section { background: #F4F7FB; }
+.faq-inner { max-width: 760px; margin: 0 auto; padding: 88px 48px 80px; }
+.faq-header { margin-bottom: 48px; }
+.faq-list { display: flex; flex-direction: column; gap: 12px; }
+.faq-item { background: var(--white); border: 1px solid rgba(0,0,0,0.05); border-radius: 12px; overflow: hidden; transition: box-shadow .3s ease; }
+.faq-item:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.04); }
+.faq-question { width: 100%; padding: 20px 24px; background: transparent; border: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; font-family: var(--font-ja); font-size: .92rem; font-weight: 700; color: var(--text); text-align: left; line-height: 1.5; }
+.faq-icon { width: 24px; height: 24px; border-radius: 50%; background: rgba(8,145,178,0.08); display: flex; align-items: center; justify-content: center; font-family: var(--font-en); font-size: 1rem; color: var(--cyan); font-weight: 500; flex-shrink: 0; transition: transform .3s ease; }
+.faq-item.open .faq-icon { transform: rotate(45deg); }
+.faq-answer { max-height: 0; overflow: hidden; transition: max-height .35s ease; }
+.faq-item.open .faq-answer { max-height: 300px; }
+.faq-answer-inner { padding: 0 24px 20px; font-size: .85rem; color: var(--text-sub); line-height: 1.85; }
+
+/* ===== CTA ===== */
+.cta-section { background: linear-gradient(135deg,#0891B2 0%,#0E7490 40%,#0D9488 100%); position: relative; overflow: hidden; }
+.cta-section::before { content:''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg,var(--cyan) 0%,var(--cyan-light) 50%,var(--teal) 100%); }
+.cta-glow { position: absolute; width: 600px; height: 600px; background: var(--cyan); border-radius: 50%; filter: blur(160px); opacity: .06; top: 50%; left: 50%; transform: translate(-50%,-50%); pointer-events: none; }
+.cta-inner { max-width: 680px; margin: 0 auto; padding: 80px 48px; text-align: center; position: relative; z-index: 1; }
+.cta-title { font-size: clamp(1.4rem,3.2vw,1.9rem); font-weight: 900; color: #fff; line-height: 1.55; margin-bottom: 16px; }
+.cta-title .hl-cta { color: #FACC15; }
+.cta-desc { font-size: .9rem; color: rgba(255,255,255,0.8); line-height: 1.8; margin-bottom: 40px; }
+.cta-form { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 36px 32px; margin-bottom: 24px; }
+.cta-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+.cta-form-full { margin-bottom: 12px; }
+.cta-input { width: 100%; padding: 14px 16px; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25); border-radius: 10px; font-family: var(--font-ja); font-size: .85rem; color: #fff; outline: none; transition: border-color .3s ease; }
+.cta-input::placeholder { color: rgba(255,255,255,0.5); } .cta-input:focus { border-color: #FACC15; box-shadow: 0 0 0 3px rgba(250,204,21,0.15); }
+.cta-select { width: 100%; padding: 14px 16px; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25); border-radius: 10px; font-family: var(--font-ja); font-size: .85rem; color: rgba(255,255,255,0.5); outline: none; appearance: none; cursor: pointer; }
+.cta-select:focus { border-color: #FACC15; box-shadow: 0 0 0 3px rgba(250,204,21,0.15); }
+.cta-submit { width: 100%; padding: 16px 24px; background: #FACC15; color: #0C4A5E; border: none; border-radius: 10px; font-family: var(--font-ja); font-size: .95rem; font-weight: 700; cursor: pointer; transition: all .3s ease; margin-top: 8px; box-shadow: 0 4px 16px rgba(250,204,21,0.3); }
+.cta-submit:hover { background: #EAB308; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(250,204,21,0.4); }
+.cta-privacy { font-size: .7rem; color: rgba(255,255,255,0.5); } .cta-privacy a { color: rgba(255,255,255,0.7); text-decoration: underline; }
+
+/* ===== FOOTER ===== */
+.footer { background: #0A1525; padding: 32px 48px; text-align: center; }
+.footer-logo { font-family: var(--font-en); font-weight: 700; font-size: 1.2rem; color: #4A5568; margin-bottom: 8px; }
+.footer-logo .c { color: var(--cyan); opacity: .6; }
+.footer-copy { font-size: .7rem; color: #3A4556; }
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 960px) {
+  /* ヒーロー (v6ベースのレスポンシブ) */
+  .hero-inner { padding: 32px 24px; }
+  .hero-columns { flex-direction: column; gap: 24px; }
+  .hero-logo .en { font-size: 42px; } .hero-logo .ja { font-size: 32px; }
+  section.hero h1 { font-size: 1.6rem; }
+  .hero-sub { font-size: 0.9rem; }
+  .awards { flex-wrap: wrap; gap: 6px; justify-content: center; }
+  .award-laurel-l, .award-laurel-r { width: 28px; height: 48px; }
+  .award-body .num { font-size: 1.5rem; }
+  .award-body .label { font-size: 0.7rem; }
+  /* セクション共通 */
+  .pain-grid,.solution-grid { grid-template-columns: 1fr; max-width: 480px; margin-left: auto; margin-right: auto; }
+  .pain-inner,.solution-inner,.reason-inner,.op-inner,.results-inner,.voice-inner,.pricing-inner,.faq-inner,.cta-inner { padding: 56px 24px 48px; }
+  .reason-row { grid-template-columns: 1fr; gap: 24px; }
+  .reason-row.reverse .reason-visual { order: 0; } .reason-row.reverse .reason-text { order: 0; }
+  .op-example-body { grid-template-columns: 1fr; }
+  .op-profile { border-right: none; border-bottom: 1px solid rgba(0,0,0,0.04); }
+  .op-arrow { padding: 12px 0; }
+  .results-stats { grid-template-columns: 1fr; max-width: 320px; margin-left: auto; margin-right: auto; }
+  .voice-grid { grid-template-columns: 1fr; max-width: 500px; margin-left: auto; margin-right: auto; }
+  .pricing-grid { grid-template-columns: 1fr; max-width: 400px; margin-left: auto; margin-right: auto; }
+  .pricing-roi { padding: 24px 20px; }
+  .cta-form-row { grid-template-columns: 1fr; }
+  .solution-card-title { min-height: auto; }
+}
+</style>
+</head>
+<body>
+
+<!-- ===== HERO (v6ベース) ===== -->
+<section class="hero" id="hero-section">
+  <div class="orb orb-1"></div><div class="orb orb-2"></div>
+
+  <div class="hero-inner">
+    <!-- 訴求バッジ（上部に独立配置） -->
+    <div class="awards">
+
+      <!-- エントリー率 7% -->
+      <div class="award">
+        <svg class="award-laurel-l" viewBox="0 0 36 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M28 56 C24 48, 16 42, 14 34" stroke="#C5A236" stroke-width="2" fill="none"/>
+          <path d="M22 48 C18 44, 8 42, 2 36 C6 34, 18 36, 22 44Z" fill="#D4AF37" opacity="0.8"/>
+          <path d="M12 42 L22 46" stroke="#C5A236" stroke-width="0.6" opacity="0.4"/>
+          <path d="M19 40 C15 36, 5 33, 0 26 C4 24, 16 28, 19 36Z" fill="#D4AF37" opacity="0.75"/>
+          <path d="M10 33 L19 38" stroke="#C5A236" stroke-width="0.6" opacity="0.4"/>
+          <path d="M17 32 C13 28, 4 24, 0 17 C4 16, 14 21, 17 28Z" fill="#D4AF37" opacity="0.7"/>
+          <path d="M8 24 L17 30" stroke="#C5A236" stroke-width="0.6" opacity="0.4"/>
+          <path d="M15 24 C12 20, 5 16, 2 9 C5 8, 13 14, 15 20Z" fill="#D4AF37" opacity="0.65"/>
+          <path d="M8 16 L15 22" stroke="#C5A236" stroke-width="0.6" opacity="0.4"/>
+          <path d="M14 17 C12 13, 7 10, 5 4 C7 3, 13 8, 14 14Z" fill="#D4AF37" opacity="0.6"/>
+        </svg>
+        <div class="award-body">
+          <span class="label">エントリー率</span>
+          <span class="num">7</span><span class="unit">%</span>
+        </div>
+        <svg class="award-laurel-r" viewBox="0 0 36 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M8 56 C12 48, 20 42, 22 34" stroke="#C5A236" stroke-width="2" fill="none"/>
+          <path d="M14 48 C18 44, 28 42, 34 36 C30 34, 18 36, 14 44Z" fill="#D4AF37" opacity="0.8"/>
+          <path d="M24 42 L14 46" stroke="#C5A236" stroke-width="0.6" opacity="0.4"/>
+          <path d="M17 40 C21 36, 31 33, 36 26 C32 24, 20 28, 17 36Z" fill="#D4AF37" opacity="0.75"/>
+          <path d="M26 33 L17 38" stroke="#C5A236" stroke-width="0.6" opacity="0.4"/>
+          <path d="M19 32 C23 28, 32 24, 36 17 C32 16, 22 21, 19 28Z" fill="#D4AF37" opacity="0.7"/>
+          <path d="M28 24 L19 30" stroke="#C5A236" stroke-width="0.6" opacity="0.4"/>
+          <path d="M21 24 C24 20, 31 16, 34 9 C31 8, 23 14, 21 20Z" fill="#D4AF37" opacity="0.65"/>
+          <path d="M28 16 L21 22" stroke="#C5A236" stroke-width="0.6" opacity="0.4"/>
+          <path d="M22 17 C24 13, 29 10, 31 4 C29 3, 23 8, 22 14Z" fill="#D4AF37" opacity="0.6"/>
+        </svg>
+      </div>
+
+      <div class="award-divider"></div>
+
+      <!-- 全媒体対応 -->
+      <div class="award">
+        <svg class="award-laurel-l" viewBox="0 0 36 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M28 56 C24 48, 16 42, 14 34" stroke="#C5A236" stroke-width="2" fill="none"/>
+          <path d="M22 48 C18 44, 8 42, 2 36 C6 34, 18 36, 22 44Z" fill="#D4AF37" opacity="0.8"/>
+          <path d="M12 42 L22 46" stroke="#C5A236" stroke-width="0.6" opacity="0.4"/>
+          <path d="M19 40 C15 36, 5 33, 0 26 C4 24, 16 28, 19 36Z" fill="#D4AF37" opacity="0.75"/>
+          <path d="M10 33 L19 38" stroke="#C5A236" stroke-width="0.6" opacity="0.4"/>
+          <path d="M17 32 C13 28, 4 24, 0 17 C4 16, 14 21, 17 28Z" fill="#D4AF37" opacity="0.7"/>
+          <path d="M8 24 L17 30" stroke="#C5A236" stroke-width="0.6" opacity="0.4"/>
+          <path d="M15 24 C12 20, 5 16, 2 9 C5 8, 13 14, 15 20Z" fill="#D4AF37" opacity="0.65"/>
+          <path d="M8 16 L15 22" stroke="#C5A236" stroke-width="0.6" opacity="0.4"/>
+          <path d="M14 17 C12 13, 7 10, 5 4 C7 3, 13 8, 14 14Z" fill="#D4AF37" opacity="0.6"/>
+        </svg>
+        <div class="award-body">
+          <span class="num" style="font-size:1.6rem;">全媒体</span><span class="label">対応</span>
+        </div>
+        <svg class="award-laurel-r" viewBox="0 0 36 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M8 56 C12 48, 20 42, 22 34" stroke="#C5A236" stroke-width="2" fill="none"/>
+          <path d="M14 48 C18 44, 28 42, 34 36 C30 34, 18 36, 14 44Z" fill="#D4AF37" opacity="0.8"/>
+          <path d="M24 42 L14 46" stroke="#C5A236" stroke-width="0.6" opacity="0.4"/>
+          <path d="M17 40 C21 36, 31 33, 36 26 C32 24, 20 28, 17 36Z" fill="#D4AF37" opacity="0.75"/>
+          <path d="M26 33 L17 38" stroke="#C5A236" stroke-width="0.6" opacity="0.4"/>
+          <path d="M19 32 C23 28, 32 24, 36 17 C32 16, 22 21, 19 28Z" fill="#D4AF37" opacity="0.7"/>
+          <path d="M28 24 L19 30" stroke="#C5A236" stroke-width="0.6" opacity="0.4"/>
+          <path d="M21 24 C24 20, 31 16, 34 9 C31 8, 23 14, 21 20Z" fill="#D4AF37" opacity="0.65"/>
+          <path d="M28 16 L21 22" stroke="#C5A236" stroke-width="0.6" opacity="0.4"/>
+          <path d="M22 17 C24 13, 29 10, 31 4 C29 3, 23 8, 22 14Z" fill="#D4AF37" opacity="0.6"/>
+        </svg>
+      </div>
+
+      <div class="award-divider"></div>
+
+      <!-- 送信実績 5,000通 -->
+      <div class="award">
+        <svg class="award-laurel-l" viewBox="0 0 36 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M28 56 C24 48, 16 42, 14 34" stroke="#C5A236" stroke-width="2" fill="none"/>
+          <path d="M22 48 C18 44, 8 42, 2 36 C6 34, 18 36, 22 44Z" fill="#D4AF37" opacity="0.8"/>
+          <path d="M12 42 L22 46" stroke="#C5A236" stroke-width="0.6" opacity="0.4"/>
+          <path d="M19 40 C15 36, 5 33, 0 26 C4 24, 16 28, 19 36Z" fill="#D4AF37" opacity="0.75"/>
+          <path d="M10 33 L19 38" stroke="#C5A236" stroke-width="0.6" opacity="0.4"/>
+          <path d="M17 32 C13 28, 4 24, 0 17 C4 16, 14 21, 17 28Z" fill="#D4AF37" opacity="0.7"/>
+          <path d="M8 24 L17 30" stroke="#C5A236" stroke-width="0.6" opacity="0.4"/>
+          <path d="M15 24 C12 20, 5 16, 2 9 C5 8, 13 14, 15 20Z" fill="#D4AF37" opacity="0.65"/>
+          <path d="M8 16 L15 22" stroke="#C5A236" stroke-width="0.6" opacity="0.4"/>
+          <path d="M14 17 C12 13, 7 10, 5 4 C7 3, 13 8, 14 14Z" fill="#D4AF37" opacity="0.6"/>
+        </svg>
+        <div class="award-body">
+          <span class="label">送信実績</span>
+          <span class="num">5,000</span><span class="unit">通</span>
+        </div>
+        <svg class="award-laurel-r" viewBox="0 0 36 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M8 56 C12 48, 20 42, 22 34" stroke="#C5A236" stroke-width="2" fill="none"/>
+          <path d="M14 48 C18 44, 28 42, 34 36 C30 34, 18 36, 14 44Z" fill="#D4AF37" opacity="0.8"/>
+          <path d="M24 42 L14 46" stroke="#C5A236" stroke-width="0.6" opacity="0.4"/>
+          <path d="M17 40 C21 36, 31 33, 36 26 C32 24, 20 28, 17 36Z" fill="#D4AF37" opacity="0.75"/>
+          <path d="M26 33 L17 38" stroke="#C5A236" stroke-width="0.6" opacity="0.4"/>
+          <path d="M19 32 C23 28, 32 24, 36 17 C32 16, 22 21, 19 28Z" fill="#D4AF37" opacity="0.7"/>
+          <path d="M28 24 L19 30" stroke="#C5A236" stroke-width="0.6" opacity="0.4"/>
+          <path d="M21 24 C24 20, 31 16, 34 9 C31 8, 23 14, 21 20Z" fill="#D4AF37" opacity="0.65"/>
+          <path d="M28 16 L21 22" stroke="#C5A236" stroke-width="0.6" opacity="0.4"/>
+          <path d="M22 17 C24 13, 29 10, 31 4 C29 3, 23 8, 22 14Z" fill="#D4AF37" opacity="0.6"/>
+        </svg>
+      </div>
+
+    </div>
+
+    <!-- 左右カラム（高さ揃え: align-items: stretch） -->
+    <div class="hero-columns">
+      <!-- 左カラム: ロゴ〜CTA -->
+      <div class="hero-left">
+        <div class="hero-logo"><span class="en"><span class="c">C</span><span class="rest">ore</span></span><span class="ja">スカウト</span></div>
+        <h1>テンプレでは、もう届かない。<br><span class="hl">一人ひとりの核心に響く</span>AIスカウト。</h1>
+        <p class="hero-sub">候補者の経歴・実績・志向をAIが深く読み解き、1to1スカウト文面を自動生成</p>
+        <div class="hero-ctas">
+          <a href="#contact" class="hero-cta1">無料デモを予約する <span>→</span></a>
+          <a href="#pain" class="hero-cta2">仕組みを見る ↓</a>
+        </div>
+      </div>
+
+      <!-- 右カラム: Chrome窓 -->
+      <div class="hero-right">
+        <div class="chrome-w">
+          <div class="chrome-w-bar"><span class="browser-dot r"></span><span class="browser-dot y"></span><span class="browser-dot g"></span></div>
+          <div class="chrome-w-tab"><div class="chrome-w-tab-item"><span class="chrome-w-tab-icon">C</span>Coreスカウト</div></div>
+          <div class="chrome-w-url"><div class="chrome-w-url-input">🔒 corescout.jp</div></div>
+          <div class="chrome-w-content">
+            <div class="ba before"><div class="ba-label"><span class="dot"></span>Before — テンプレートスカウト</div><div class="ba-subject">件名：【年収UP】営業経験者様へ</div><div class="ba-body">はじめまして。あなたの営業経験を拝見し、ぜひご紹介したい求人がございます。弊社では年収UPが見込める法人営業のポジションを多数取り扱っております…</div></div>
+            <div class="ba-arrow"><span><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg></span></div>
+            <div class="ba after"><div class="ba-label"><span class="dot"></span>After — Coreスカウト</div><div class="ba-subject">件名：【全国3位・達成率157%】北海道拠点のリーダー候補として｜年収600万円〜</div><div class="ba-body"><span class="hl">全国60名中3位</span>という傑出した営業成績に加え、<span class="hl">目標達成率157%</span>という圧倒的な数字、さらには北海道全域を飛び回りながら<span class="hl">1,200名もの顧客をフォロー</span>しきる行動力に、営業職としての「凄み」を感じました。</div><div class="ba-after-badge"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>エントリー率 +4.5pt 向上</div></div>
+          </div>
+        </div>
+      </div>
+    </div><!-- /hero-columns -->
+
+  </div><!-- /hero-inner -->
+</section>
+
+<!-- ===== PROBLEMS ===== -->
+<section class="pain-section" id="pain">
+  <div class="pain-inner">
+    <div class="pain-header"><div class="pain-label">PROBLEMS</div><h2 class="pain-title">こんな課題、ありませんか？</h2><p class="pain-subtitle">スカウト業務でよくある課題をCoreスカウトが解決します。</p></div>
+    <div class="pain-grid">
+      <div class="pain-card"><div class="pain-num">PAIN 01</div><h3 class="pain-card-title">数を打っても返信が来ない</h3><p class="pain-card-desc"><span class="em">「自分宛てじゃない」と一瞬でわかるテンプレ文。</span>量を増やしても、1通1通が刺さっていなければエントリー率は変わらない。</p></div>
+      <div class="pain-card"><div class="pain-num">PAIN 02</div><h3 class="pain-card-title">AIツールでも差が出ない</h3><p class="pain-card-desc">既存のAIツールは<span class="em">「テンプレ＋α」の域を出ない。</span>求職者の経歴・志向を深く読み解けず、結局「金額が高いRPA」と同じように感じる。</p></div>
+      <div class="pain-card"><div class="pain-num">PAIN 03</div><h3 class="pain-card-title">高品質なスカウトを打てる人が限られている</h3><p class="pain-card-desc"><span class="em">「経歴から刺さるポイントを見抜く力」は属人スキル。</span>良いテンプレを共有してもアシスタントでは再現できない。</p></div>
+    </div>
+    <!-- OUR STORY -->
+    <div class="pain-story">
+      <div class="pain-story-divider"></div>
+      <h3 class="pain-story-title">人材紹介会社である私たちも、<br class="sp-only">同じ壁にぶつかっていました。</h3>
+      <p class="pain-story-text">毎日何百通ものスカウトを送り、返信が来ない日々。テンプレートを工夫しても、AIツールを試しても、エントリー率は<strong>2.4%</strong>のまま。「結局、1通ずつ手書きするしかないのか」</p>
+      <p class="pain-story-text">——そんな限界を感じていました。</p>
+      <p class="pain-story-text">だから候補者一人ひとりの経歴を深く読み解き、「なぜあなたなのか」が伝わるスカウトをAIで生成する仕組みを自分たちで作りました。</p>
+      <p class="pain-story-text">同じ悩みを持つエージェントの皆さまにも、この変化を届けたい</p>
+      <p class="pain-story-text">——それが<strong>Coreスカウト</strong>の原点です。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== SOLUTION ===== -->
+<section class="solution-section" id="solution">
+  <div class="solution-inner">
+    <div class="solution-header"><div class="section-label">SOLUTION</div><h2 class="section-title"><span class="solution-logo"><span class="solution-logo-c">C</span>ore</span><span class="solution-logo-ja">スカウト</span>による解決</h2><p class="section-subtitle">「トップ人材コンサルタントの思考プロセス」をAIでフルカスタマイズ</p></div>
+    <div class="solution-bridge"><div class="solution-bridge-label">Coreスカウトとは？</div><p><span class="em-core">Coreスカウト</span>は、「量を打つためのツール」ではなく、1通の質を劇的に高め、結果として<span class="em-core">返信率そのものを変える</span>仕組みです。トップコンサルタントが候補者の経歴を読み解き、最適な訴求と求人を選定する — その思考プロセスをAIが再現します。</p></div>
+    <div class="solution-grid">
+      <div class="solution-card"><div class="solution-num">SOLVE 01</div><h3 class="solution-card-title">求職者の「核心」に響くAI文面</h3><p class="solution-card-desc">職歴や数字の表面だけでなく、<span class="em">現年収から希望年収のギャップや希望業界の組み合わせ</span>から、テンプレでは絶対に書けない「あなたを見ている」文面を生成します。</p></div>
+      <div class="solution-card"><div class="solution-num">SOLVE 02</div><h3 class="solution-card-title">プロフィールを「深く読み解き」求人を自動で選定</h3><p class="solution-card-desc">既存AIツールでできない<span class="em">「求人選定」をCoreスカウトでは実現。</span>あらかじめ登録した求人データベースから、候補者の経験・志向・年収に合わせて最適な求人をピックアップします。</p></div>
+      <div class="solution-card"><div class="solution-num">SOLVE 03</div><h3 class="solution-card-title">誰が打ってもトップレベルの品質</h3><p class="solution-card-desc">細かい検索条件やテンプレートの量産は必要ありません。<span class="em">新人やアシスタントでも、経験豊富なコンサルタントと同じ品質</span>のスカウトを15秒で作成できます。</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== REASON — Zigzag layout ===== -->
+<section class="reason-section" id="reason">
+  <div class="reason-inner">
+    <div class="reason-header"><div class="section-label">REASON</div><h2 class="section-title">Coreスカウトが選ばれる理由</h2></div>
+
+    <!-- REASON 01 -->
+    <div class="reason-row">
+      <div class="reason-visual">
+        <svg viewBox="0 0 480 360" xmlns="http://www.w3.org/2000/svg">
+          <rect width="480" height="360" rx="16" fill="#F0F9FF"/>
+          <g transform="translate(28,22)">
+            <rect x="0" y="0" width="128" height="64" rx="10" fill="#fff" stroke="#E0E7EF" stroke-width="1.5"/>
+            <rect x="14" y="14" width="100" height="5" rx="2.5" fill="#E0E7EF"/>
+            <text x="64" y="46" font-size="13" fill="#0891B2" text-anchor="middle" font-weight="700">BizReach</text>
+            <rect x="142" y="0" width="128" height="64" rx="10" fill="#fff" stroke="#E0E7EF" stroke-width="1.5"/>
+            <rect x="156" y="14" width="100" height="5" rx="2.5" fill="#E0E7EF"/>
+            <text x="206" y="46" font-size="13" fill="#0D9488" text-anchor="middle" font-weight="700">AMBI</text>
+            <rect x="284" y="0" width="128" height="64" rx="10" fill="#fff" stroke="#E0E7EF" stroke-width="1.5"/>
+            <rect x="298" y="14" width="100" height="5" rx="2.5" fill="#E0E7EF"/>
+            <text x="348" y="46" font-size="13" fill="#22C55E" text-anchor="middle" font-weight="700">Green</text>
+            <rect x="0" y="78" width="128" height="64" rx="10" fill="#fff" stroke="#E0E7EF" stroke-width="1.5"/>
+            <rect x="14" y="92" width="100" height="5" rx="2.5" fill="#E0E7EF"/>
+            <text x="64" y="124" font-size="13" fill="#F97316" text-anchor="middle" font-weight="700">転職会議</text>
+            <rect x="142" y="78" width="128" height="64" rx="10" fill="#fff" stroke="#E0E7EF" stroke-width="1.5"/>
+            <rect x="156" y="92" width="100" height="5" rx="2.5" fill="#E0E7EF"/>
+            <text x="206" y="124" font-size="13" fill="#6366F1" text-anchor="middle" font-weight="700">doda X</text>
+            <rect x="284" y="78" width="128" height="64" rx="10" fill="#fff" stroke="#E0E7EF" stroke-width="1.5"/>
+            <rect x="298" y="92" width="100" height="5" rx="2.5" fill="#E0E7EF"/>
+            <text x="348" y="124" font-size="13" fill="#3B82F6" text-anchor="middle" font-weight="700">Openwork</text>
+            <rect x="0" y="156" width="128" height="64" rx="10" fill="#fff" stroke="#E0E7EF" stroke-width="1.5"/>
+            <rect x="14" y="170" width="100" height="5" rx="2.5" fill="#E0E7EF"/>
+            <text x="64" y="202" font-size="13" fill="#EC4899" text-anchor="middle" font-weight="700">マイナビ</text>
+            <rect x="142" y="156" width="128" height="64" rx="10" fill="#fff" stroke="#E0E7EF" stroke-width="1.5"/>
+            <rect x="156" y="170" width="100" height="5" rx="2.5" fill="#E0E7EF"/>
+            <text x="206" y="202" font-size="13" fill="#8B5CF6" text-anchor="middle" font-weight="700">リクナビ</text>
+            <rect x="284" y="156" width="128" height="64" rx="10" fill="#fff" stroke="#E0E7EF" stroke-width="1.2" stroke-dasharray="4 3"/>
+            <text x="348" y="196" font-size="13" fill="#94A3B8" text-anchor="middle" font-weight="600">+ その他</text>
+            <rect x="0" y="234" width="128" height="64" rx="10" fill="#fff" stroke="#E0E7EF" stroke-width="1.5"/>
+            <rect x="14" y="248" width="100" height="5" rx="2.5" fill="#E0E7EF"/>
+            <text x="64" y="280" font-size="13" fill="#EF4444" text-anchor="middle" font-weight="700">ミドルの転職</text>
+            <rect x="142" y="234" width="128" height="64" rx="10" fill="#fff" stroke="#E0E7EF" stroke-width="1.5"/>
+            <rect x="156" y="248" width="100" height="5" rx="2.5" fill="#E0E7EF"/>
+            <text x="206" y="280" font-size="13" fill="#0EA5E9" text-anchor="middle" font-weight="700">LinkedIn</text>
+            <rect x="284" y="234" width="128" height="64" rx="10" fill="#fff" stroke="#E0E7EF" stroke-width="1.5"/>
+            <rect x="298" y="248" width="100" height="5" rx="2.5" fill="#E0E7EF"/>
+            <text x="348" y="280" font-size="13" fill="#14B8A6" text-anchor="middle" font-weight="700">Wantedly</text>
+          </g>
+        </svg>
+      </div>
+      <div class="reason-text">
+        <div class="reason-text-label">REASON <span class="num">01</span></div>
+        <h3 class="reason-text-title">全媒体に対応可能</h3>
+        <p class="reason-text-desc">BizReach・AMBI・Green・転職会議・doda・Openworkなど、<span class="em-r">求職者情報が掲載されている媒体であればすべて対応。</span>媒体ごとにツールを切り替える必要がなく、候補者プロフィールをコピー＆ペーストするだけで、どの媒体でも同じ品質のスカウトを生成できます。</p>
+      </div>
+    </div>
+
+    <!-- REASON 02 -->
+    <div class="reason-row reverse">
+      <div class="reason-visual">
+        <svg viewBox="0 0 480 360" xmlns="http://www.w3.org/2000/svg">
+          <rect width="480" height="360" rx="16" fill="#F0FDF9"/>
+          <rect x="16" y="16" width="150" height="150" rx="12" fill="#fff" stroke="#0891B2" stroke-width="1.5"/>
+          <circle cx="50" cy="48" r="16" fill="#0891B2" opacity="0.1"/>
+          <circle cx="50" cy="44" r="7" fill="#0891B2" opacity="0.3"/>
+          <path d="M38 61 Q50 53 62 61" fill="#0891B2" opacity="0.2"/>
+          <text x="83" y="46" font-size="11" fill="#0891B2" font-weight="700">候補者</text>
+          <text x="83" y="60" font-size="11" fill="#0891B2" font-weight="700">プロフィール</text>
+          <rect x="30" y="80" width="120" height="6" rx="3" fill="#E0E7EF"/>
+          <rect x="30" y="92" width="95" height="6" rx="3" fill="#E0E7EF"/>
+          <rect x="30" y="112" width="110" height="22" rx="5" fill="#0891B2" opacity="0.06"/>
+          <text x="85" y="127" font-size="10" fill="#0891B2" text-anchor="middle" font-weight="600">経験・志向・年収</text>
+          <rect x="30" y="140" width="100" height="5" rx="2.5" fill="#F0F4F8"/>
+          <rect x="16" y="194" width="150" height="150" rx="12" fill="#fff" stroke="#0D9488" stroke-width="1.5"/>
+          <ellipse cx="91" cy="224" rx="52" ry="14" fill="#0D9488" opacity="0.08" stroke="#0D9488" stroke-width="1"/>
+          <rect x="39" y="224" width="104" height="40" fill="#0D9488" opacity="0.03"/>
+          <ellipse cx="91" cy="264" rx="52" ry="14" fill="#0D9488" opacity="0.08" stroke="#0D9488" stroke-width="1"/>
+          <text x="91" y="250" font-size="12" fill="#0D9488" text-anchor="middle" font-weight="700">求人データベース</text>
+          <rect x="32" y="286" width="54" height="20" rx="5" fill="#0D9488" opacity="0.06"/>
+          <text x="59" y="300" font-size="9" fill="#0D9488" text-anchor="middle">登録済み求人</text>
+          <rect x="92" y="286" width="54" height="20" rx="5" fill="#0D9488" opacity="0.06"/>
+          <text x="119" y="300" font-size="9" fill="#0D9488" text-anchor="middle">自動選定</text>
+          <path d="M170 90 L212 160" stroke="#0891B2" stroke-width="1.5" stroke-dasharray="5 3"/>
+          <path d="M170 270 L212 200" stroke="#0D9488" stroke-width="1.5" stroke-dasharray="5 3"/>
+          <rect x="208" y="146" width="64" height="68" rx="14" fill="#0891B2"/>
+          <text x="240" y="172" font-size="13" fill="#fff" text-anchor="middle" font-weight="700" font-family="Space Grotesk,sans-serif"><tspan fill="#22D3EE">C</tspan>ore</text>
+          <text x="240" y="192" font-size="10" fill="rgba(255,255,255,0.8)" text-anchor="middle" font-weight="600">スカウト</text>
+          <path d="M278 180 L312 180" stroke="#0891B2" stroke-width="2.5" fill="none" marker-end="url(#arR2)"/>
+          <defs><marker id="arR2" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="#0891B2"/></marker></defs>
+          <rect x="318" y="16" width="148" height="328" rx="12" fill="#fff" stroke="#E0E7EF" stroke-width="1.5"/>
+          <rect x="330" y="28" width="124" height="10" rx="5" fill="#0891B2" opacity="0.12"/>
+          <text x="392" y="37" font-size="8" fill="#0891B2" text-anchor="middle" font-weight="700">件名</text>
+          <rect x="330" y="46" width="124" height="6" rx="3" fill="#E0E7EF"/>
+          <rect x="330" y="64" width="124" height="8" rx="4" fill="#0891B2" opacity="0.06"/>
+          <text x="392" y="71" font-size="7" fill="#0891B2" text-anchor="middle" font-weight="700">▼ お送りした理由</text>
+          <rect x="330" y="80" width="124" height="5" rx="2.5" fill="#F0F4F8"/>
+          <rect x="330" y="90" width="110" height="5" rx="2.5" fill="#F0F4F8"/>
+          <rect x="330" y="100" width="118" height="5" rx="2.5" fill="#F0F4F8"/>
+          <rect x="330" y="110" width="90" height="5" rx="2.5" fill="#F0F4F8"/>
+          <rect x="326" y="126" width="132" height="116" rx="8" fill="#0D9488" opacity="0.04" stroke="#0D9488" stroke-width="1" stroke-dasharray="3 2"/>
+          <rect x="332" y="134" width="120" height="8" rx="4" fill="#0D9488" opacity="0.1"/>
+          <text x="392" y="141" font-size="7" fill="#0D9488" text-anchor="middle" font-weight="700">▼ 自動選定された求人</text>
+          <rect x="334" y="150" width="116" height="26" rx="5" fill="#fff" stroke="#E0E7EF" stroke-width="1"/>
+          <rect x="340" y="156" width="70" height="5" rx="2.5" fill="#E0E7EF"/>
+          <rect x="340" y="165" width="50" height="4" rx="2" fill="#F0F4F8"/>
+          <rect x="334" y="182" width="116" height="26" rx="5" fill="#fff" stroke="#E0E7EF" stroke-width="1"/>
+          <rect x="340" y="188" width="70" height="5" rx="2.5" fill="#E0E7EF"/>
+          <rect x="340" y="197" width="50" height="4" rx="2" fill="#F0F4F8"/>
+          <rect x="334" y="214" width="116" height="22" rx="5" fill="#fff" stroke="#E0E7EF" stroke-width="1"/>
+          <rect x="340" y="220" width="70" height="5" rx="2.5" fill="#E0E7EF"/>
+          <rect x="330" y="252" width="124" height="8" rx="4" fill="#6366F1" opacity="0.06"/>
+          <text x="392" y="259" font-size="7" fill="#6366F1" text-anchor="middle" font-weight="700">▼ 転職活動のポイント</text>
+          <rect x="330" y="268" width="124" height="5" rx="2.5" fill="#F0F4F8"/>
+          <rect x="330" y="278" width="110" height="5" rx="2.5" fill="#F0F4F8"/>
+          <rect x="330" y="288" width="118" height="5" rx="2.5" fill="#F0F4F8"/>
+          <rect x="330" y="298" width="100" height="5" rx="2.5" fill="#F0F4F8"/>
+          <rect x="330" y="308" width="115" height="5" rx="2.5" fill="#F0F4F8"/>
+          <text x="392" y="334" font-size="9" fill="#0891B2" text-anchor="middle" font-weight="700">生成されたスカウト文面</text>
+        </svg>
+      </div>
+      <div class="reason-text">
+        <div class="reason-text-label">REASON <span class="num">02</span></div>
+        <h3 class="reason-text-title">求人を自動ピックアップ</h3>
+        <p class="reason-text-desc">あらかじめ登録した求人データベースから、<span class="em-r">候補者の経験・志向・年収に合致する求人をAIが自動で選定。</span>文面内に最適な求人提案が自然に組み込まれるため、求職者は「自分に合ったポジションが紹介されている」と感じ、返信率が大きく向上します。</p>
+      </div>
+    </div>
+
+    <!-- REASON 03 -->
+    <div class="reason-row">
+      <div class="reason-visual">
+        <svg viewBox="0 0 480 360" xmlns="http://www.w3.org/2000/svg">
+          <rect width="480" height="360" rx="16" fill="#F8FAFB"/>
+          <rect x="16" y="16" width="210" height="328" rx="14" fill="#fff" stroke="#CBD5E1" stroke-width="1.5"/>
+          <rect x="28" y="28" width="186" height="32" rx="8" fill="#F1F5F9"/>
+          <text x="121" y="50" font-size="14" fill="#64748B" text-anchor="middle" font-weight="800">ベテラン</text>
+          <circle cx="70" cy="94" r="20" fill="#E2E8F0"/>
+          <circle cx="70" cy="88" r="8" fill="#94A3B8"/>
+          <path d="M54 111 Q70 101 86 111" fill="#94A3B8" opacity="0.3"/>
+          <text x="120" y="92" font-size="11" fill="#64748B" font-weight="600">経験 5年</text>
+          <rect x="28" y="126" width="186" height="100" rx="8" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1"/>
+          <text x="121" y="148" font-size="11" fill="#64748B" text-anchor="middle" font-weight="700">生成される文面</text>
+          <rect x="40" y="160" width="162" height="5" rx="2.5" fill="#CBD5E1" opacity="0.6"/>
+          <rect x="40" y="170" width="140" height="5" rx="2.5" fill="#CBD5E1" opacity="0.5"/>
+          <rect x="40" y="180" width="150" height="5" rx="2.5" fill="#CBD5E1" opacity="0.5"/>
+          <rect x="40" y="194" width="120" height="5" rx="2.5" fill="#CBD5E1" opacity="0.4"/>
+          <rect x="40" y="204" width="145" height="5" rx="2.5" fill="#CBD5E1" opacity="0.4"/>
+          <rect x="28" y="244" width="186" height="84" rx="8" fill="#ECFEFF"/>
+          <text x="62" y="276" font-size="12" fill="#0891B2" font-weight="600">エントリー率</text>
+          <text x="168" y="282" font-size="30" fill="#0891B2" text-anchor="middle" font-weight="700" font-family="Space Grotesk,sans-serif">7.0%</text>
+          <rect x="44" y="300" width="152" height="12" rx="6" fill="#0891B2" opacity="0.1"/>
+          <rect x="44" y="300" width="148" height="12" rx="6" fill="#0891B2" opacity="0.18"/>
+          <text x="240" y="200" font-size="24" fill="#0891B2" text-anchor="middle" font-weight="800">=</text>
+          <rect x="254" y="16" width="210" height="328" rx="14" fill="#fff" stroke="#0891B2" stroke-width="1.5"/>
+          <rect x="266" y="28" width="186" height="32" rx="8" fill="#ECFEFF"/>
+          <text x="359" y="50" font-size="14" fill="#0891B2" text-anchor="middle" font-weight="800">新人</text>
+          <circle cx="308" cy="94" r="20" fill="#E0F2FE"/>
+          <circle cx="308" cy="88" r="8" fill="#0891B2" opacity="0.4"/>
+          <path d="M292 111 Q308 101 324 111" fill="#0891B2" opacity="0.2"/>
+          <text x="358" y="92" font-size="11" fill="#0891B2" font-weight="600">経験 0.5年</text>
+          <rect x="266" y="126" width="186" height="100" rx="8" fill="#F0FDFA" stroke="#0891B2" stroke-width="1"/>
+          <text x="359" y="148" font-size="11" fill="#0891B2" text-anchor="middle" font-weight="700">生成される文面</text>
+          <rect x="278" y="160" width="162" height="5" rx="2.5" fill="#0891B2" opacity="0.15"/>
+          <rect x="278" y="170" width="140" height="5" rx="2.5" fill="#0891B2" opacity="0.12"/>
+          <rect x="278" y="180" width="150" height="5" rx="2.5" fill="#0891B2" opacity="0.12"/>
+          <rect x="278" y="194" width="120" height="5" rx="2.5" fill="#0891B2" opacity="0.1"/>
+          <rect x="278" y="204" width="145" height="5" rx="2.5" fill="#0891B2" opacity="0.1"/>
+          <rect x="266" y="244" width="186" height="84" rx="8" fill="#ECFEFF"/>
+          <text x="300" y="276" font-size="12" fill="#0891B2" font-weight="600">エントリー率</text>
+          <text x="406" y="282" font-size="30" fill="#0891B2" text-anchor="middle" font-weight="700" font-family="Space Grotesk,sans-serif">7.0%</text>
+          <rect x="282" y="300" width="152" height="12" rx="6" fill="#0891B2" opacity="0.1"/>
+          <rect x="282" y="300" width="148" height="12" rx="6" fill="#0891B2" opacity="0.18"/>
+        </svg>
+      </div>
+      <div class="reason-text">
+        <div class="reason-text-label">REASON <span class="num">03</span></div>
+        <h3 class="reason-text-title">新人でも品質はトップコンサルタントレベル</h3>
+        <p class="reason-text-desc">Coreスカウトが再現するのは、<span class="em-r">エントリー率7%を実現するトップ人材コンサルタントの思考プロセスそのもの。</span>新人やアシスタントが使っても、経験豊富なベテランと同じ品質のスカウトを15秒で生成。属人スキルに依存しない、組織全体の底上げを実現します。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== OPERATION ===== -->
+<section class="op-section" id="operation">
+  <div class="op-inner">
+    <div class="op-header"><div class="section-label">OPERATION</div><h2 class="section-title">運用イメージ</h2><p class="section-subtitle">候補者プロフィールをコピー＆ペーストするだけで、パーソナライズされた件名・本文が自動生成されます。</p></div>
+    <div class="op-example">
+      <div class="op-example-label"><span class="op-example-badge">EXAMPLE 01</span><span class="op-example-who">25歳 / 個人営業 → 人材・医療業界を希望</span></div>
+      <div class="op-example-body">
+        <div class="op-profile"><div class="op-profile-title">候補者情報</div><div class="op-profile-row"><span class="op-profile-label">年齢</span><span class="op-profile-val">25歳</span></div><div class="op-profile-row"><span class="op-profile-label">現職</span><span class="op-profile-val">記帳代行サービス / 個人営業</span></div><div class="op-profile-row"><span class="op-profile-label">経験</span><span class="op-profile-val">営業3年（チームリーダー）</span></div><div class="op-profile-row"><span class="op-profile-label">希望</span><span class="op-profile-val">人材紹介 / 医療機器メーカー</span></div><div class="op-profile-row"><span class="op-profile-label">年収</span><span class="op-profile-val">現600万 → 希望600万〜</span></div><div class="op-profile-highlight">🏆 全国60名中3位・達成率157%<br>📍 北海道全域・顧客1,200名フォロー</div></div>
+        <div class="op-arrow"><div class="op-arrow-inner"><svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div></div>
+        <div class="op-generated"><div class="op-gen-title">AI生成結果</div><div class="op-gen-subject-label">件名</div><div class="op-gen-subject">【全国3位・達成率157%】北海道拠点のリーダー候補として｜年収600万円〜・上場企業のご提案</div><div class="op-gen-body-label">本文（冒頭）</div><p class="op-gen-body"><span class="hl-gen">全国60名中3位</span>という傑出した営業成績に加え、<span class="hl-gen">目標達成率157%</span>という圧倒的な数字、さらには北海道全域を飛び回りながら<span class="hl-gen">1,200名もの顧客をフォロー</span>しきる行動力に、営業職としての「凄み」とプロ意識の高さを感じました。<br><br>保険営業職員という、個人の信頼関係が全てである顧客層に対し、<span class="hl-gen">月8回のプレゼン</span>や綿密なフォローで深く入り込める「対人折衝力」は、<span class="hl-gen">人材紹介や医療機器営業</span>といった高難易度な無形商材において即戦力となるため…</p></div>
+      </div>
+    </div>
+    <div class="op-example">
+      <div class="op-example-label"><span class="op-example-badge">EXAMPLE 02</span><span class="op-example-who">32歳 / 法人営業（医療HP制作） → IT・SaaS業界を希望</span></div>
+      <div class="op-example-body">
+        <div class="op-profile"><div class="op-profile-title">候補者情報</div><div class="op-profile-row"><span class="op-profile-label">年齢</span><span class="op-profile-val">32歳</span></div><div class="op-profile-row"><span class="op-profile-label">現職</span><span class="op-profile-val">株式会社ゼロメディカル / 法人営業</span></div><div class="op-profile-row"><span class="op-profile-label">経験</span><span class="op-profile-val">営業4年（課長代理）</span></div><div class="op-profile-row"><span class="op-profile-label">希望</span><span class="op-profile-val">IT・SaaS / 法人営業</span></div><div class="op-profile-row"><span class="op-profile-label">年収</span><span class="op-profile-val">現500-600万 → 希望700万〜</span></div><div class="op-profile-highlight">📈 新規100%・年間粗利4,700万円<br>🏥 800名規模の医療法人案件を成約</div></div>
+        <div class="op-arrow"><div class="op-arrow-inner"><svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div></div>
+        <div class="op-generated"><div class="op-gen-title">AI生成結果</div><div class="op-gen-subject-label">件名</div><div class="op-gen-subject">【新規事業立ち上げに挑戦】行動力と戦略性を評価｜医療DX領域の「事業開発リーダー候補」のご提案</div><div class="op-gen-body-label">本文（冒頭）</div><p class="op-gen-body"><span class="hl-gen">新規開拓100%</span>という厳しい環境下で、個人クリニックの即決案件から<span class="hl-gen">800名規模の大手法人の稟議案件</span>まで成約させ、<span class="hl-gen">年間粗利4,700万円を達成</span>された「突破力」と「適応力」に圧倒され、ご連絡差し上げました。<br><br>大規模法人の合議制を攻略した経験は、ステークホルダーが多く複雑な提案が求められる<span class="hl-gen">「エンタープライズ向けSaaS」</span>において、即戦力の武器となります…</p></div>
+      </div>
+    </div>
+    <p class="op-note">※ 上記は実際にCoreスカウトで生成した文面を基に構成しています。<strong>候補者情報は匿名化</strong>しています。</p>
+  </div>
+</section>
+
+<!-- ===== MODEL EXAMPLE ===== -->
+<section class="model-section" id="model">
+  <div class="model-inner">
+    <div class="model-header">
+      <div class="section-label">FULL MESSAGE</div>
+      <h2 class="section-title">生成されるスカウト文面の全体像</h2>
+      <p class="section-subtitle">Coreスカウトは3つのパートで構成された、候補者一人ひとりに最適化されたスカウト文面を自動生成します。</p>
+    </div>
+    <div class="model-card">
+      <div class="model-card-header">
+        <span class="model-card-badge">MODEL</span>
+        <span class="model-card-title">27歳 / 建機専門商社 / 法人営業＋営業企画 → IT・コンサル業界を希望</span>
+      </div>
+      <div class="model-body">
+        <div class="model-row">
+          <div class="model-side">
+            <div class="model-side-num">PART 01</div>
+            <div class="model-side-icon">💬</div>
+            <div class="model-side-title">なぜあなたに<br>送ったのか</div>
+            <div class="model-side-desc">経歴から見出した<br>強みとキャリアの<br>可能性を提示</div>
+            <div class="model-side-auto">AI自動生成</div>
+          </div>
+          <div class="model-block">
+            <p class="model-reason-text"><span class="hl-m">建機販売部門での6年間の泥臭い現場経験</span>に加え、直近では営業企画や新製品開発にも従事され、<span class="hl-m">『現場感を持った戦略立案』ができる点</span>に、商社出身者の中でも稀有な市場価値を感じました。</p>
+            <ul class="model-career-list">
+              <li>建設・製造業界の深い知見を武器に、年収水準の高い<span class="em-m">「製造業DX（バーティカルSaaS）」</span>へスライドする。</li>
+              <li>「営業企画」のご経験を昇華させ、事業全体のグロースや仕組みづくりに携わる<span class="em-m">「BizDev（事業開発）」</span>への転身。</li>
+              <li>特定商材だけでなく多様な業界の経営課題に触れ、市場価値の高い<span class="em-m">「ジェネラリスト」</span>としてグローバルに活躍する道。</li>
+            </ul>
+          </div>
+        </div>
+        <div class="model-row">
+          <div class="model-side" style="background:rgba(13,148,136,0.02)">
+            <div class="model-side-num">PART 02</div>
+            <div class="model-side-icon">🎯</div>
+            <div class="model-side-title">選定された<br>求人提案</div>
+            <div class="model-side-desc">求人DBから<br>自動マッチした<br>最適求人を文面に組込み</div>
+            <div class="model-side-auto">求人DB自動選定</div>
+          </div>
+          <div class="model-block" style="background:rgba(13,148,136,0.02)">
+            <div class="model-job-grid">
+              <div class="model-job-card">
+                <div class="model-job-info">
+                  <div class="model-job-company">キャディ株式会社</div>
+                  <div class="model-job-pos">フィールドセールス</div>
+                  <div class="model-job-desc">製造業の図面データを活用したプラットフォーム「CADDi」の提案。建機・鉄鋼の知見がダイレクトに活き、グローバル展開も加速中のため「世界」を舞台にできます。</div>
+                </div>
+                <div class="model-job-salary"><span class="yen">年収</span><br>500〜1,200<span class="yen">万円</span></div>
+              </div>
+              <div class="model-job-card">
+                <div class="model-job-info">
+                  <div class="model-job-company">Sansan株式会社</div>
+                  <div class="model-job-pos">ソリューションセールス</div>
+                  <div class="model-job-desc">国内トップクラスの営業DXサービス。ルート営業から企画職へ幅を広げた柔軟性は、顧客の課題に合わせてソリューションを組み立てるSaaS営業と非常に相性が良いです。</div>
+                </div>
+                <div class="model-job-salary"><span class="yen">年収</span><br>560〜1,050<span class="yen">万円</span></div>
+              </div>
+              <div class="model-job-card">
+                <div class="model-job-info">
+                  <div class="model-job-company">株式会社ビザスク</div>
+                  <div class="model-job-pos">コンサルティングセールス</div>
+                  <div class="model-job-desc">世界中の知見とビジネス課題をマッチングするグローバルプラットフォーム。あらゆる業界・業種の課題に触れるため、究極の「ジェネラリスト」スキルが磨かれます。</div>
+                </div>
+                <div class="model-job-salary"><span class="yen">年収</span><br>450〜750<span class="yen">万円</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="model-row">
+          <div class="model-side">
+            <div class="model-side-num">PART 03</div>
+            <div class="model-side-icon">🧭</div>
+            <div class="model-side-title">転職活動の<br>ポイント</div>
+            <div class="model-side-desc">候補者固有の課題と<br>自社の解決策を<br>自動生成</div>
+            <div class="model-side-auto">AI自動生成</div>
+          </div>
+          <div class="model-block">
+            <div class="model-point-block">
+              <div class="model-point-title"><span class="point-badge">①</span>市場価値の最大化</div>
+              <p class="model-point-risk">専門商社でのキャリアが長くなると、知見がニッチな領域に限定され、汎用的な「ジェネラリスト」としての転職市場価値が頭打ちになるリスクがあります。</p>
+              <p class="model-point-solve"><span class="em-m">【戦略的キャリア支援】</span>により、これまでの商流理解や交渉力を「IT・コンサル業界」でも通じるポータブルスキルとして言語化し、年収700万円以上を狙えるロードマップを作成します。</p>
+            </div>
+            <div class="model-point-block">
+              <div class="model-point-title"><span class="point-badge">②</span>ライフプランと働き方</div>
+              <p class="model-point-risk">「グローバル」や「やりがい」を求めると、商社特有の激務や転勤により「ワーク・ライフ・バランス」が犠牲になりがちです。</p>
+              <p class="model-point-solve"><span class="em-m">【人生設計の視点】</span>を持ち、フルリモートやフレックス制度が整ったテック企業を中心に選定。仕事の裁量権とプライベートの充実を両立できる企業をご提案します。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="model-fade-overlay">
+      <div class="model-fade-gradient"></div>
+      <div class="model-fade-cta">
+        <a href="contact.html" class="model-fade-btn">全文を読む <span class="arrow-sm">→</span></a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== RESULTS ===== -->
+<section class="results-section" id="results">
+  <div class="results-inner">
+    <div class="results-header"><div class="section-label" style="color:rgba(255,255,255,0.7)">RESULTS</div><h2 class="section-title" style="color:#fff">数字が証明する、Coreスカウトの実力</h2></div>
+    <div class="results-stats">
+      <div class="results-stat-card"><div class="results-stat-num">2.4<span class="unit">%</span> → 7<span class="unit">%</span></div><div class="results-stat-label">エントリー率の改善</div><div class="results-stat-note">約2.9倍のエントリー獲得</div></div>
+      <div class="results-stat-card"><div class="results-stat-num">5,000<span class="unit">通+</span></div><div class="results-stat-label">累計生成・送信実績</div><div class="results-stat-note">3ヶ月の期間実績</div></div>
+      <div class="results-stat-card"><div class="results-stat-num">15<span class="unit">秒</span></div><div class="results-stat-label">1通あたりの生成時間</div><div class="results-stat-note">コピペ → 生成 → 完了</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== VOICE ===== -->
+<section class="voice-section" id="voice">
+  <div class="voice-inner">
+    <div class="voice-header"><div class="section-label">VOICE</div><h2 class="section-title">求職者からの実際の反応</h2><p class="section-subtitle">Coreスカウトで生成した文面に対して届いた返信（匿名化）</p></div>
+    <div class="voice-grid">
+      <div class="sns-card">
+        <div class="sns-header">
+          <div class="sns-avatar"><svg viewBox="0 0 52 52" xmlns="http://www.w3.org/2000/svg"><rect width="52" height="52" rx="26" fill="#DBEAFE"/><circle cx="26" cy="20" r="9" fill="#6B8FB5"/><path d="M10 46 Q16 33 26 33 Q36 33 42 46" fill="#3B6B96"/><rect x="18" y="28" width="16" height="4" rx="2" fill="#5B8DB8"/><rect x="24" y="30" width="4" height="8" fill="#4A7FAD"/></svg></div>
+          <div class="sns-user-info"><div class="sns-user-name">T.Y さん</div><div class="sns-user-detail">32歳 / 医療系HP制作会社 / 法人営業（課長代理）</div></div>
+        </div>
+        <div class="sns-body"><div class="sns-bubble">ご連絡いただきありがとうございます。ご丁寧なメッセージを拝見し、ぜひ一度お話を伺えればと思っております。まずはカジュアルに、これまでのご支援事例や、私のキャリアについて情報交換させていただければ嬉しいです。</div></div>
+      </div>
+      <div class="sns-card">
+        <div class="sns-header">
+          <div class="sns-avatar"><svg viewBox="0 0 52 52" xmlns="http://www.w3.org/2000/svg"><rect width="52" height="52" rx="26" fill="#FDE8E8"/><circle cx="26" cy="19" r="9" fill="#C4866B"/><path d="M10 46 Q16 33 26 33 Q36 33 42 46" fill="#2BA4B5"/><ellipse cx="26" cy="14" rx="12" ry="6" fill="#3D3028"/><path d="M14 14 Q16 6 26 8 Q36 6 38 14" fill="#3D3028"/><circle cx="21" cy="18" r="2" fill="#fff" opacity="0.3"/><circle cx="31" cy="18" r="2" fill="#fff" opacity="0.3"/></svg></div>
+          <div class="sns-user-info"><div class="sns-user-name">B.S さん</div><div class="sns-user-detail">24歳 / 民間航空会社 / 海外営業（国際機関折衝）</div></div>
+        </div>
+        <div class="sns-body"><div class="sns-bubble">まさに、おっしゃるように、「早期離職の懸念」や「忍耐力不足」と誤解されてしまうリスクがどうしても付きまといます。という点に対して、自分の転職理由を明確にするのが難しいと考えております。ぜひご相談させてください。</div></div>
+      </div>
+      <div class="sns-card">
+        <div class="sns-header">
+          <div class="sns-avatar"><svg viewBox="0 0 52 52" xmlns="http://www.w3.org/2000/svg"><rect width="52" height="52" rx="26" fill="#E0F2FE"/><circle cx="26" cy="20" r="9" fill="#7BA3C4"/><path d="M10 46 Q16 33 26 33 Q36 33 42 46" fill="#5A8FA8"/><rect x="18" y="28" width="16" height="4" rx="2" fill="#6B9BB5"/></svg></div>
+          <div class="sns-user-info"><div class="sns-user-name">F.K さん</div><div class="sns-user-detail">25歳 / 素材メーカー / 事業開発（原料調達・工場立ち上げ）</div></div>
+        </div>
+        <div class="sns-body"><div class="sns-bubble">是非、ご面談の機会を頂戴できますと幸いです。スカウトメッセージでは、少ない情報から言語化頂きキャリアのご提案まで誠にありがとうございます。私自身、自己分析の解像度が低い状況ではございますが諸々とキャリアサポート頂けますと幸いでございます。</div></div>
+      </div>
+      <div class="sns-card">
+        <div class="sns-header">
+          <div class="sns-avatar"><svg viewBox="0 0 52 52" xmlns="http://www.w3.org/2000/svg"><rect width="52" height="52" rx="26" fill="#F0FDF4"/><circle cx="26" cy="19" r="9" fill="#B8917A"/><path d="M10 46 Q16 33 26 33 Q36 33 42 46" fill="#0D9488"/><path d="M14 16 Q18 4 26 6 Q34 4 38 16 L36 20 Q34 12 26 14 Q18 12 16 20 Z" fill="#2D2016"/><path d="M16 16 L14 28" stroke="#2D2016" stroke-width="2.5" fill="none"/><path d="M36 16 L38 28" stroke="#2D2016" stroke-width="2.5" fill="none"/></svg></div>
+          <div class="sns-user-info"><div class="sns-user-name">K.E さん</div><div class="sns-user-detail">28歳 / 総合物流会社 / 国際貿易業務（貿易事務・元秘書）</div></div>
+        </div>
+        <div class="sns-body"><div class="sns-bubble">転職に関しては特に決めておらず情報収集中ですが、いただいたお話に興味があります。まずは面談という形でもよろしいでしょうか。ぜひ一度お時間をいただけますと幸いです。どうぞよろしくお願いいたします。</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== MID CTA ===== -->
+<section class="mid-cta-section">
+  <div class="mid-cta-inner">
+    <p class="mid-cta-line1">スカウトに<span class="hl-y">「成果」</span>を求める企業様は</p>
+    <h2 class="mid-cta-line2">是非 <span class="hl-w">Coreスカウト</span> をご検討ください</h2>
+    <a href="#contact" class="mid-cta-btn">無料相談はこちら <span class="arrow">→</span></a>
+  </div>
+</section>
+
+<!-- ===== SIMULATION ===== -->
+<section class="sim-section" id="simulation">
+  <div class="sim-inner">
+    <div class="sim-header">
+      <div class="section-label">SIMULATION</div>
+      <h2 class="section-title">比較シミュレーション</h2>
+      <p class="section-subtitle">月間1,000通送信した場合、面談1件を獲得するコストはどれだけ変わるのか。</p>
+    </div>
+    <div class="sim-table-wrap">
+      <table class="sim-table">
+        <thead>
+          <tr>
+            <th>項目</th>
+            <th>既存テンプレ</th>
+            <th>新人アシスタント採用</th>
+            <th class="sim-core">Coreスカウト</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>月間送信数</td><td>1,000通</td><td>1,000通</td><td class="sim-core">1,000通</td></tr>
+          <tr><td>エントリー率</td><td>1%</td><td>2.4%</td><td class="sim-core">7%</td></tr>
+          <tr><td>月間エントリー数</td><td>10件</td><td>24件</td><td class="sim-core">70件</td></tr>
+          <tr><td>エントリー→面談実施率</td><td>35%</td><td>35%</td><td class="sim-core">35%</td></tr>
+          <tr><td>面談数</td><td>4件</td><td>8件</td><td class="sim-core">25件</td></tr>
+          <tr><td>追加費用（人件費・ツール費）</td><td>¥0</td><td>¥200,000</td><td class="sim-core">¥60,000</td></tr>
+          <tr><td>面談1件あたりコスト</td><td>¥0</td><td>¥25,000</td><td class="sim-core">¥2,400</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="sim-note">※ 面談数の小数点は四捨五入しています。</p>
+  </div>
+</section>
+
+<!-- ===== FAQ ===== -->
+<section class="faq-section" id="faq">
+  <div class="faq-inner">
+    <div class="faq-header"><div class="section-label">FAQ</div><h2 class="section-title">よくあるご質問</h2></div>
+    <div class="faq-list">
+      <div class="faq-item"><button class="faq-question"><span>自動送信ツールですか？</span><span class="faq-icon">+</span></button><div class="faq-answer"><div class="faq-answer-inner">いいえ。Coreスカウトはスカウト文面の「生成」に特化したツールです。各媒体への送信はお客様自身で行っていただきます。自動送信ではないからこそ、生成された文面を確認・微調整した上で送信でき、品質を担保できます。</div></div></div>
+      <div class="faq-item"><button class="faq-question"><span>対応している求人媒体を教えてください</span><span class="faq-icon">+</span></button><div class="faq-answer"><div class="faq-answer-inner">BizReach、AMBI、Openwork、転職会議、Green、dodaなど、求職者のプロフィール情報がしっかり掲載されている媒体であればすべて対応可能です。候補者情報をコピー＆ペーストするだけで利用できるため、媒体を問いません。</div></div></div>
+      <div class="faq-item"><button class="faq-question"><span>既存のAIスカウトツールとの違いは何ですか？</span><span class="faq-icon">+</span></button><div class="faq-answer"><div class="faq-answer-inner">多くの既存ツールは「テンプレート＋名前差し込み」が中心です。Coreスカウトは候補者の経歴・実績・志向を深く読み解き、「なぜこの人にこのポジションなのか」のロジックごと文面を構築します。さらに、登録済み求人データベースから最適な求人を自動選定する機能も搭載しており、エントリー率2.4%→7%という差が生まれています。</div></div></div>
+      <div class="faq-item"><button class="faq-question"><span>無料トライアルはありますか？</span><span class="faq-icon">+</span></button><div class="faq-answer"><div class="faq-answer-inner">無料トライアル期間は現在設けておりません。ただし、無料デモにて実際の候補者プロフィールを使った生成デモをご覧いただけます。生成品質を十分にご確認いただいた上でご契約いただけますので、まずはお気軽にデモをご予約ください。</div></div></div>
+      <div class="faq-item"><button class="faq-question"><span>最低契約期間はありますか？</span><span class="faq-icon">+</span></button><div class="faq-answer"><div class="faq-answer-inner">最低契約期間についての詳細は、お打ち合わせの中でご説明させていただきます。まずは無料デモにて生成品質をご確認ください。</div></div></div>
+      <div class="faq-item"><button class="faq-question"><span>利用する月額料金はいくらですか？</span><span class="faq-icon">+</span></button><div class="faq-answer"><div class="faq-answer-inner">詳しい料金の詳細は、無料お見積もりのお打ち合わせの中でご提案させていただきます。まずはお気軽にお問い合わせください。</div></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== CTA ===== -->
+<section class="cta-section" id="contact">
+  <div class="cta-glow"></div>
+  <div class="cta-inner">
+    <h2 class="cta-title">まずは<span class="hl-cta">無料デモ</span>で<br>生成品質をご確認ください</h2>
+    <p class="cta-desc">実際の候補者プロフィールを使った生成デモをご覧いただけます。<br>オンライン30分で、エントリー率を変える「質の違い」を体感してください。</p>
+    <form id="cta-form" method="POST" action="YOUR_GOOGLE_FORMS_URL" target="hidden-iframe-lp" class="cta-form">
+      <div class="cta-form-row"><input type="text" name="entry.COMPANY" class="cta-input" placeholder="会社名" required><input type="text" name="entry.NAME" class="cta-input" placeholder="お名前" required></div>
+      <div class="cta-form-row"><input type="email" name="entry.EMAIL" class="cta-input" placeholder="メールアドレス" required><input type="tel" name="entry.PHONE" class="cta-input" placeholder="電話番号"></div>
+      <div class="cta-form-full"><select name="entry.VOLUME" class="cta-select"><option value="" disabled selected>月間スカウト送信数</option><option value="〜300通/月">〜300通 / 月</option><option value="300〜1,000通/月">300〜1,000通 / 月</option><option value="1,000〜3,000通/月">1,000〜3,000通 / 月</option><option value="3,000通以上/月">3,000通以上 / 月</option></select></div>
+      <button type="submit" class="cta-submit">無料デモを予約する</button>
+    </form>
+    <iframe name="hidden-iframe-lp" style="display:none;"></iframe>
+    </div>
+    <p class="cta-privacy">送信いただいた情報は <a href="#">プライバシーポリシー</a> に基づき適切に管理いたします。</p>
+  </div>
+</section>
+
+<footer class="footer"><div class="footer-logo"><span class="c">C</span>ore スカウト</div><p class="footer-copy">&copy; 2025 TARUSHIRU Inc. All rights reserved.</p></footer>
+
+<script>
+// FAQアコーディオン
+document.querySelectorAll('.faq-question').forEach(function(btn){btn.addEventListener('click',function(){var item=btn.closest('.faq-item');var isOpen=item.classList.contains('open');document.querySelectorAll('.faq-item').forEach(function(i){i.classList.remove('open')});if(!isOpen)item.classList.add('open');});});
+// CTAフォーム送信後サンクス表示
+var ctaForm=document.getElementById('cta-form');
+if(ctaForm){ctaForm.addEventListener('submit',function(){setTimeout(function(){ctaForm.closest('.cta-inner').innerHTML='<div style="text-align:center;padding:60px 0"><div style="font-size:3rem;margin-bottom:20px">✓</div><h2 style="font-size:1.4rem;font-weight:900;color:#fff;margin-bottom:12px">お申し込みありがとうございます</h2><p style="font-size:.9rem;color:rgba(255,255,255,0.8);line-height:1.8">担当者より2営業日以内にご連絡いたします。</p></div>';},500);});}
+</script>
+</body>
+</html>
