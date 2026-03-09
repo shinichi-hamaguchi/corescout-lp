@@ -4,6 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>無料デモ予約 — Coreスカウト</title>
+<!-- Google Analytics 4 -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-6FM5Y9GPL1"></script>
+<script>
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+gtag('config', 'G-6FM5Y9GPL1');
+</script>
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=M+PLUS+1:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@300;400;500;700;900&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet">
@@ -153,6 +161,8 @@ body { font-family: var(--font-ja); line-height: 1.8; color: var(--text); }
 <script>
 // フォーム送信後にサンクスメッセージを表示
 document.getElementById('contact-form').addEventListener('submit', function() {
+  // GA4: フォーム送信イベント
+  gtag('event', 'form_submit', { form_location: 'contact_page' });
   setTimeout(function() {
     document.getElementById('form-container').style.display = 'none';
     document.getElementById('thanks').classList.add('show');
