@@ -11,6 +11,32 @@ window.dataLayer = window.dataLayer || [];
 function gtag(){dataLayer.push(arguments);}
 gtag('js', new Date());
 gtag('config', 'G-6FM5Y9GPL1');
+
+// UTMパラメータ取得・GA4カスタムディメンション送信
+(function(){
+  var params = new URLSearchParams(window.location.search);
+  var utmContent = params.get('utm_content');
+  var utmSource = params.get('utm_source');
+  var utmMedium = params.get('utm_medium');
+  var utmCampaign = params.get('utm_campaign');
+
+  // utm_contentが存在する場合、GA4にカスタムディメンション「company」として送信
+  if(utmContent){
+    gtag('set', {'company': decodeURIComponent(utmContent)});
+    gtag('event', 'utm_identified', {
+      company: decodeURIComponent(utmContent),
+      utm_source_custom: utmSource || '',
+      utm_medium_custom: utmMedium || '',
+      utm_campaign_custom: utmCampaign || ''
+    });
+  }
+
+  // UTMパラメータをsessionStorageに保持（ページ遷移時にも引き継ぐ）
+  if(utmContent) sessionStorage.setItem('utm_content', utmContent);
+  if(utmSource) sessionStorage.setItem('utm_source', utmSource);
+  if(utmMedium) sessionStorage.setItem('utm_medium', utmMedium);
+  if(utmCampaign) sessionStorage.setItem('utm_campaign', utmCampaign);
+})();
 </script>
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1093,10 +1119,26 @@ section.hero h1 .hl::after { content: ''; position: absolute; bottom: 2px; left:
     });
   });
 })();
-// GA4: contact.htmlへの遷移をコンバージョンとして計測
+// GA4: contact.htmlへの遷移をコンバージョンとして計測（UTMパラメータ引き継ぎ）
 document.querySelectorAll('a[href="contact.html"]').forEach(function(link){
-  link.addEventListener('click', function(){
-    gtag('event', 'click_contact_link', { link_text: link.textContent.trim() });
+  link.addEventListener('click', function(e){
+    // sessionStorageからUTMパラメータを取得してcontact.htmlにも引き継ぐ
+    var utm = {};
+    ['utm_source','utm_medium','utm_campaign','utm_content'].forEach(function(key){
+      var val = sessionStorage.getItem(key);
+      if(val) utm[key] = val;
+    });
+    var company = utm['utm_content'] ? decodeURIComponent(utm['utm_content']) : '';
+    gtag('event', 'click_contact_link', {
+      link_text: link.textContent.trim(),
+      company: company
+    });
+    // UTMパラメータ付きURLにリンク先を更新
+    if(Object.keys(utm).length > 0){
+      e.preventDefault();
+      var qs = Object.keys(utm).map(function(k){ return k + '=' + utm[k]; }).join('&');
+      window.location.href = 'contact.html?' + qs;
+    }
   });
 });
 // FAQアコーディオン
@@ -1104,8 +1146,12 @@ document.querySelectorAll('.faq-question').forEach(function(btn){btn.addEventLis
 // CTAフォーム送信後サンクス表示
 var ctaForm=document.getElementById('cta-form');
 if(ctaForm){ctaForm.addEventListener('submit',function(){
-  // GA4: フォーム送信イベント
-  gtag('event', 'form_submit', { form_location: 'lp_cta' });
+  // GA4: フォーム送信イベント（companyカスタムディメンション付き）
+  var storedCompany = sessionStorage.getItem('utm_content');
+  gtag('event', 'form_submit', {
+    form_location: 'lp_cta',
+    company: storedCompany ? decodeURIComponent(storedCompany) : ''
+  });
   setTimeout(function(){ctaForm.closest('.cta-inner').innerHTML='<div style="text-align:center;padding:60px 0"><div style="font-size:3rem;margin-bottom:20px">✓</div><h2 style="font-size:1.4rem;font-weight:900;color:#fff;margin-bottom:12px">お申し込みありがとうございます</h2><p style="font-size:.9rem;color:rgba(255,255,255,0.8);line-height:1.8">担当者より2営業日以内にご連絡いたします。</p></div>';},500);});}
 </script>
 </body>

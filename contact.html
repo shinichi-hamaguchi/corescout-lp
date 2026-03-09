@@ -11,6 +11,33 @@ window.dataLayer = window.dataLayer || [];
 function gtag(){dataLayer.push(arguments);}
 gtag('js', new Date());
 gtag('config', 'G-6FM5Y9GPL1');
+
+// UTMパラメータ取得・GA4カスタムディメンション送信
+(function(){
+  var params = new URLSearchParams(window.location.search);
+  var utmContent = params.get('utm_content') || sessionStorage.getItem('utm_content');
+  var utmSource = params.get('utm_source') || sessionStorage.getItem('utm_source');
+  var utmMedium = params.get('utm_medium') || sessionStorage.getItem('utm_medium');
+  var utmCampaign = params.get('utm_campaign') || sessionStorage.getItem('utm_campaign');
+
+  // utm_contentが存在する場合、GA4にカスタムディメンション「company」として送信
+  if(utmContent){
+    var companyName = decodeURIComponent(utmContent);
+    gtag('set', {'company': companyName});
+    gtag('event', 'utm_identified', {
+      company: companyName,
+      utm_source_custom: utmSource || '',
+      utm_medium_custom: utmMedium || '',
+      utm_campaign_custom: utmCampaign || ''
+    });
+  }
+
+  // sessionStorageに保持（ページ遷移時にも引き継ぐ）
+  if(utmContent) sessionStorage.setItem('utm_content', utmContent);
+  if(utmSource) sessionStorage.setItem('utm_source', utmSource);
+  if(utmMedium) sessionStorage.setItem('utm_medium', utmMedium);
+  if(utmCampaign) sessionStorage.setItem('utm_campaign', utmCampaign);
+})();
 </script>
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -161,8 +188,12 @@ body { font-family: var(--font-ja); line-height: 1.8; color: var(--text); }
 <script>
 // フォーム送信後にサンクスメッセージを表示
 document.getElementById('contact-form').addEventListener('submit', function() {
-  // GA4: フォーム送信イベント
-  gtag('event', 'form_submit', { form_location: 'contact_page' });
+  // GA4: フォーム送信イベント（companyカスタムディメンション付き）
+  var storedCompany = sessionStorage.getItem('utm_content');
+  gtag('event', 'form_submit', {
+    form_location: 'contact_page',
+    company: storedCompany ? decodeURIComponent(storedCompany) : ''
+  });
   setTimeout(function() {
     document.getElementById('form-container').style.display = 'none';
     document.getElementById('thanks').classList.add('show');
