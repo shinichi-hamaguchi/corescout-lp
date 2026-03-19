@@ -4,6 +4,21 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Coreスカウト — AIで1to1スカウトを自動生成</title>
+<!-- 短縮UTMパラメータ変換（?co=企業名 → ?utm_content=企業名） -->
+<script>
+(function(){
+  var url = new URL(window.location.href);
+  var p = url.searchParams;
+  if(p.has('co')){
+    p.set('utm_content', p.get('co'));
+    p.delete('co');
+    if(!p.has('utm_source')) p.set('utm_source','form_sales');
+    if(!p.has('utm_medium')) p.set('utm_medium','form');
+    if(!p.has('utm_campaign')) p.set('utm_campaign','cs2026');
+    history.replaceState(null,'',url.toString());
+  }
+})();
+</script>
 <!-- Google Analytics 4 -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-6FM5Y9GPL1"></script>
 <script>
